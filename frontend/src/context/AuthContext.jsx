@@ -17,7 +17,8 @@ export const AuthProvider = ({ children }) => {
   const syncWithBackend = async (session) => {
     
     try {
-      const response = await fetch('${API_URL}/api/auth/sync', {
+      // ✅ FIXED: Changed single quotes to backticks below
+      const response = await fetch(`${API_URL}/api/auth/sync`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
