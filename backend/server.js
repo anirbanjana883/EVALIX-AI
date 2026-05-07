@@ -1,11 +1,50 @@
-// 1. MUST BE THE VERY FIRST LINE. This guarantees process.env is loaded before anything else!
+// 1. MUST BE THE VERY FIRST LINE. Guarantees process.env is loaded before anything else!
 import 'dotenv/config'; 
 
 import app from './app.js';
+import { PrismaClient } from '@prisma/client';
 
-// 2. Now it's safe to use process.env
+const prisma = new PrismaClient();
+
+// 2. Render will automatically assign a PORT in production (usually 10000)
 const PORT = process.env.PORT || 3000;
 
-app.listen(PORT, () => {
-  console.log(`🚀 API Server running smoothly on http://localhost:${PORT}`);
+const server = app.listen(PORT, () => {
+  // Removed "http://localhost" because in production, it's hosted on a real domain!
+  console.log(`🚀 API Server running smoothly on port ${PORT}`);
 });
+
+// ============================================================================
+// 🛡️ ENTERPRISE UPGRADE: GRACEFUL SHUTDOWN FOR CLOUD DEPLOYMENTS
+// ============================================================================
+// When Render restarts or sleeps your app, it sends a SIGTERM signal.
+// This intercepts that signal to close the database safely so you don't leak connections!
+
+const gracefulShutdown = async (signal) => {
+  console.log(`\n🔄 Received ${signal}. Shutting down gracefully...`);
+  
+  // 1. Stop accepting new HTTP requests
+  server.close(async () => {
+    console.log('🛑 HTTP server closed.');
+    
+    try {
+      // 2. Disconnect Prisma safely from Supabase
+      await prisma.$disconnect();
+      console.log('🗄️ Prisma database connection closed cleanly.');
+      process.exit(0);
+    } catch (err) {
+      console.error('❌ Error during database disconnection:', err);
+      process.exit(1);
+    }
+  });
+
+  // Force close if it takes too long (10 seconds max)
+  setTimeout(() => {
+    console.error('⚠️ Could not close connections in time, forcefully shutting down');
+    process.exit(1);
+  }, 10000);
+};
+
+// Listen for termination signals from Render (SIGTERM) or your local terminal (SIGINT / Ctrl+C)
+process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
+process.on('SIGINT', () => gracefulShutdown('SIGINT'));
