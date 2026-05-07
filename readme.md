@@ -19,6 +19,8 @@ Transform academic grading with multimodal AI evaluation, automated rubrics, and
 - [Installation & Setup](#installation--setup)
 - [Environment Configuration](#environment-configuration)
 - [Running the Application](#running-the-application)
+- [Project Structure](#project-structure)
+- [Future Industry Roadmap](#future-industry-roadmap-scaling-to-competitive-exams)
 - [Contributing](#contributing)
 
 ---
