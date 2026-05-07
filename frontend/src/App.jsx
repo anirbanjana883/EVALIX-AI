@@ -17,12 +17,9 @@ import AssignmentView from "./pages/AssignmentView";
 import SubmissionReview from "./pages/SubmissionReview";
 import ResultsView from "./pages/ResultsView";
 import GenerateQuestionsView from "./pages/GenerateQuestionsView";
+import Home from "./pages/Home";
 
 // Placeholders for subsequent views
-const Landing = () => (
-  <div className="text-text-primary p-8">Landing Page Content</div>
-);
-
 // Role-Based Route Guards
 const TeacherRoute = ({ children }) => {
   const { user, role, isLoading } = useAuth();
@@ -63,7 +60,7 @@ function App() {
 
         <Routes>
           {/* Public Routes */}
-          <Route path="/" element={<Landing />} />
+          <Route path="/" element={<Home />} />
           <Route path="/auth" element={<Auth />} />
 
           {/* Teacher Routes */}
