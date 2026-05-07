@@ -5,9 +5,8 @@ import { AiEvaluationService } from '../services/ai.evaluator.js';
 export const SubmitController = {
   async handleSubmission(req, res) {
     try {
-      // answers expects an array: [{ questionId: "...", fileUrl: "..." }] OR [{ questionId: "...", selectedOption: "A" }]
       const { assignmentId, answers } = req.body; 
-      const studentId = req.user.id; // From Auth Middleware
+      const studentId = req.user.id; 
 
       if (!assignmentId || !answers || answers.length === 0) {
         return res.status(400).json({ error: "Missing assignment ID or answers." });
@@ -29,7 +28,7 @@ export const SubmitController = {
       }
       // ==========================================
 
-      // 2. Create the Submission and all Pending Answers in DB (Single Transaction)
+      // 2. Create the Submission and all Pending Answers in DB 
       const submission = await SubmissionRepository.createPendingSubmission(
         studentId, 
         assignmentId, 
@@ -38,6 +37,7 @@ export const SubmitController = {
 
       // 3. ROUTE TO THE CORRECT PIPELINE
       if (assignment.type === 'MCQ') {
+        
         // SYNCHRONOUS: Grade instantly and await the result
         const finalScore = await McqEvaluationService.evaluate(submission.id, assignment, answers);
         
@@ -48,6 +48,7 @@ export const SubmitController = {
         });
 
       } else if (assignment.type === 'DESCRIPTIVE') {
+        
         // ASYNCHRONOUS: Fire the background AI service (DO NOT await)
         AiEvaluationService.evaluateBackground(submission.id, assignment, answers)
           .catch(err => console.error("Critical AI Pipeline Failure:", err));
@@ -56,6 +57,12 @@ export const SubmitController = {
           message: "Submission received. AI Evaluation is processing in the background.",
           status: "PENDING",
           submissionId: submission.id
+        });
+
+      } else {
+        // 🌟 FIX: The Fallback! Catch invalid assignment types so the server doesn't hang.
+        return res.status(400).json({ 
+          error: "Invalid assignment format. Cannot process submission." 
         });
       }
 

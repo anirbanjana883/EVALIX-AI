@@ -3,13 +3,15 @@ import { apiKeyManager } from '../utils/keyManager.js';
 
 const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
-export const llmAgent = async (studentAnswer, modelAnswer, maxMarks) => {
+// 🌟 ADDED 'question' AS THE FIRST PARAMETER
+export const llmAgent = async (question, studentAnswer, modelAnswer, maxMarks) => {
   console.log("-> [LLM Agent] Asking Gemini for detailed evaluation...");
   
   const prompt = `
     You are a rigorous but empathetic university professor evaluating a student's exam answer.
     
     REFERENCE MATERIAL:
+    - Question Asked: "${question}"
     - Teacher's Gold Standard Answer: "${modelAnswer || 'No model answer provided. Grade based on absolute factual accuracy.'}"
     - Maximum Possible Marks: ${maxMarks}
     
@@ -17,7 +19,7 @@ export const llmAgent = async (studentAnswer, modelAnswer, maxMarks) => {
     "${studentAnswer}"
 
     YOUR TASK:
-    Evaluate the student's answer against the Gold Standard. Be objective. Do not penalize for poor grammar if the technical concepts are correct.
+    Evaluate the student's answer against the Gold Standard to see if they accurately answered the specific Question Asked. Be objective. Do not penalize for poor grammar if the technical concepts are correct.
     
     You must return a single JSON object. The "feedback" string MUST be formatted using Markdown bullet points for readability.
 
