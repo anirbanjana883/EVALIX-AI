@@ -1,4 +1,4 @@
-# 🚀 Evaluator.ai - Enterprise-Grade AI Exam Evaluation Platform
+# 🚀 EVALIX AI - Enterprise-Grade AI Exam Evaluation Platform
 
 <p align="center">
   <img src="./frontend/src/assets/logo.jpeg" alt="Evaluator.ai Logo" width="200"/>
