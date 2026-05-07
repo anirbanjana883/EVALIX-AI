@@ -16,15 +16,16 @@ Transform academic grading with multimodal AI evaluation, automated rubrics, and
 - [Features](#features)
 - [Tech Stack](#tech-stack)
 - [Detailed API Reference](#detailed-api-reference)
-- [Installation & Setup](#installation--setup)
+- [Installation & Setup](#installation-setup)
 - [Environment Configuration](#environment-configuration)
 - [Running the Application](#running-the-application)
 - [Project Structure](#project-structure)
-- [Future Industry Roadmap](#future-industry-roadmap-scaling-to-competitive-exams)
+- [Future Industry Roadmap](#future-industry-roadmap)
 - [Contributing](#contributing)
 
 ---
 
+<a id="overview"></a>
 ## 🎯 Overview
 
 Evaluator.ai is an intelligent, automated grading platform designed for educational institutions. It handles both traditional Multiple Choice Questions (MCQs) and complex Descriptive (handwritten) answers.
@@ -33,6 +34,7 @@ By leveraging cutting-edge multimodal Large Language Models (LLMs), the platform
 
 ---
 
+<a id="problem-statement"></a>
 ## 🔍 Problem Statement
 
 ### The Challenge
@@ -44,6 +46,7 @@ By leveraging cutting-edge multimodal Large Language Models (LLMs), the platform
 
 ---
 
+<a id="solution"></a>
 ## 💡 Solution
 
 Evaluator.ai automates the examination lifecycle:
@@ -71,6 +74,7 @@ Time-Lock Expires → Student Views Detailed Analytics
 
 ---
 
+<a id="architecture"></a>
 ## 🏗️ Architecture
 
 ### System Components
@@ -104,6 +108,7 @@ Time-Lock Expires → Student Views Detailed Analytics
 
 ---
 
+<a id="engineering-challenges-overcome"></a>
 ## 🛡️ Engineering Challenges Overcome
 
 ### 1. The Handwriting OCR Bottleneck
@@ -123,6 +128,7 @@ Time-Lock Expires → Student Views Detailed Analytics
 
 ---
 
+<a id="features"></a>
 ## ✨ Features
 
 ### Teacher Features
@@ -139,6 +145,7 @@ Time-Lock Expires → Student Views Detailed Analytics
 
 ---
 
+<a id="tech-stack"></a>
 ## 🛠️ Tech Stack
 
 ### Backend
@@ -168,6 +175,7 @@ Time-Lock Expires → Student Views Detailed Analytics
 
 ---
 
+<a id="detailed-api-reference"></a>
 ## 🖧 Detailed API Reference
 
 All routes are protected by `requireAuth` (JWT validation). Role-specific routes utilize `requireStudent` or `requireTeacher` middleware to enforce strict RBAC.
@@ -211,6 +219,7 @@ All routes are protected by `requireAuth` (JWT validation). Role-specific routes
 
 ---
 
+<a id="installation-setup"></a>
 ## 🚀 Installation & Setup
 
 ### Prerequisites
@@ -223,7 +232,7 @@ All routes are protected by `requireAuth` (JWT validation). Role-specific routes
 ### Step 1: Clone the Repository
 
 ```bash
-git clone https://github.com/your-org/evaluator-ai.git
+git clone https://github.com/anirbanjana883/EVALIX-AI.git
 cd evaluator-ai
 ```
 
@@ -249,6 +258,7 @@ npm install
 
 ---
 
+<a id="environment-configuration"></a>
 ## ⚙️ Environment Configuration
 
 ### Backend (`backend/.env`)
@@ -275,6 +285,7 @@ VITE_API_URL="http://localhost:3000"
 
 ---
 
+<a id="running-the-application"></a>
 ## 🎮 Running the Application
 
 **Start the Backend Server:**
@@ -295,6 +306,7 @@ npm run dev
 
 ---
 
+<a id="project-structure"></a>
 ## 📁 Project Structure
 
 ```text
@@ -372,6 +384,7 @@ EXAM-EVALUATOR/
 
 ---
 
+<a id="future-industry-roadmap"></a>
 ## 🔮 Future Industry Roadmap: Scaling to Competitive Exams
 
 While Evaluator.ai is currently optimized for university and K-12 academic grading, our core multimodal architecture is built to scale into India's multi-billion dollar competitive coaching industry. 
@@ -398,8 +411,9 @@ Our upcoming development phases will introduce specialized AI pipelines for the 
 
 ---
 
-**Made with 💡 and ☕ by the Evaluator.ai Team**
+**Made with 💡 and ☕ by the EVALIX AI Team**
 
+<a id="contributing"></a>
 ## 🤝 Contributing
 
 1. Create a feature branch: `git checkout -b feature/your-feature-name`
