@@ -1,0 +1,42 @@
+@import "tailwindcss";
+
+@theme {
+  /* Brand - Coral */
+  --color-brand-50: #FAECE7;
+  --color-brand-100: #F5C4B3;
+  --color-brand-200: #F0997B;
+  --color-brand-400: #D85A30;
+  --color-brand-600: #993C1D;
+  --color-brand-800: #712B13;
+  --color-brand-900: #4A1B0C;
+
+  /* Neutrals - Gray */
+  --color-gray-50: #F1EFE8;
+  --color-gray-100: #D3D1C7;
+  --color-gray-200: #B4B2A9;
+  --color-gray-400: #888780;
+  --color-gray-600: #5F5E5A;
+  --color-gray-800: #444441;
+  --color-gray-900: #2C2C2A;
+
+  /* Dark Mode Semantic UI Tokens */
+  --color-bg-primary: #1C1B1A; /* Claude's custom deep warm gray */
+  --color-bg-secondary: #2C2C2A; /* Gray 900 */
+  --color-bg-tertiary: #444441; /* Gray 800 */
+  
+  --color-text-primary: #F1EFE8; /* Gray 50 */
+  --color-text-secondary: #B4B2A9; /* Gray 200 */
+  --color-text-dim: #888780; /* Gray 400 */
+  
+  --color-border-subtle: #444441; /* Gray 800 */
+  --color-border-strong: #5F5E5A; /* Gray 600 */
+
+  /* Dark mode shadow */
+  --shadow-card: 0 8px 24px -4px rgba(0, 0, 0, 0.4);
+}
+
+html {
+  scroll-behavior: smooth;
+  background-color: var(--color-bg-secondary);
+  color: var(--color-text-primary);
+}
