@@ -141,21 +141,21 @@ export const TeacherRepository = {
   },
 
   // 4. THE OVERRIDE ENGINE: Let a teacher manually change a grade
-  async overrideAnswerScore(submissionId, answerId, newScore, teacherFeedback) {
-    // A. Update the specific answer
+ async overrideAnswerScore(submissionId, answerId, newScore, teacherFeedback) {
+    // A. Update the specific answer (Using the newly optimized flat columns!)
     const updatedAnswer = await prisma.answer.update({
       where: { id: answerId },
       data: {
         score: newScore,
-        feedback_json: teacherFeedback
-          ? { teacher_note: teacherFeedback }
-          : undefined,
+        // 🌟 FIX: Directly assign the string instead of wrapping it in a JSON object
+        teacher_feedback: teacherFeedback, 
       },
     });
 
     // B. Recalculate the Total Score for the entire Submission
     const allAnswers = await prisma.answer.findMany({
       where: { submission_id: submissionId },
+      select: { score: true } // Optimization: Only fetch the scores to save memory
     });
 
     const newTotalScore = allAnswers.reduce(
@@ -170,5 +170,5 @@ export const TeacherRepository = {
     });
 
     return { newTotalScore, updatedAnswer };
-  },
+  }
 };
