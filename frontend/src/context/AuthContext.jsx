@@ -1,6 +1,8 @@
 import { createContext, useContext, useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
+
 const AuthContext = createContext({});
 
 export const useAuth = () => useContext(AuthContext);
@@ -13,8 +15,9 @@ export const AuthProvider = ({ children }) => {
 
   // The Sync Handshake
   const syncWithBackend = async (session) => {
+    
     try {
-      const response = await fetch('http://localhost:3000/api/auth/sync', {
+      const response = await fetch('${API_URL}/api/auth/sync', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
