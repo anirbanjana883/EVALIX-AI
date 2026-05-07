@@ -10,6 +10,11 @@ import teacherRoutes from './src/routes/teacher.routes.js';
 
 const app = express();
 
+const allowedOrigins = [
+  'http://localhost:5173', // For your local development
+  process.env.FRONTEND_URL // For your deployed production frontend
+];
+
 // Global Middleware
 app.use(cors());
 app.use(express.json());
