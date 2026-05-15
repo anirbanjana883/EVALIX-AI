@@ -1,42 +1,94 @@
+@import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500;600&display=swap');
 @import "tailwindcss";
 
 @theme {
-  /* Brand - Coral */
-  --color-brand-50: #FAECE7;
-  --color-brand-100: #F5C4B3;
-  --color-brand-200: #F0997B;
-  --color-brand-400: #D85A30;
-  --color-brand-600: #993C1D;
-  --color-brand-800: #712B13;
-  --color-brand-900: #4A1B0C;
+  /* --- Fonts --- */
+  --font-sans: 'DM Sans', sans-serif;
+  --font-display: 'Syne', sans-serif;
 
-  /* Neutrals - Gray */
-  --color-gray-50: #F1EFE8;
-  --color-gray-100: #D3D1C7;
-  --color-gray-200: #B4B2A9;
-  --color-gray-400: #888780;
-  --color-gray-600: #5F5E5A;
-  --color-gray-800: #444441;
-  --color-gray-900: #2C2C2A;
+  /* --- Brand Colors --- */
+  --color-brand-400: #D85A30; /* Your --brand */
+  --color-brand-600: #993C1D; /* Your --brand-dim */
 
-  /* Dark Mode Semantic UI Tokens */
-  --color-bg-primary: #1C1B1A; /* Claude's custom deep warm gray */
-  --color-bg-secondary: #2C2C2A; /* Gray 900 */
-  --color-bg-tertiary: #444441; /* Gray 800 */
-  
-  --color-text-primary: #F1EFE8; /* Gray 50 */
-  --color-text-secondary: #B4B2A9; /* Gray 200 */
-  --color-text-dim: #888780; /* Gray 400 */
-  
-  --color-border-subtle: #444441; /* Gray 800 */
-  --color-border-strong: #5F5E5A; /* Gray 600 */
+  /* --- Backgrounds (Dark Tech) --- */
+  --color-bg-base: #0E0D0C;      /* Deepest Black */
+  --color-bg-primary: #141311;   /* Panel Background */
+  --color-bg-secondary: #1A1917; /* Card Background */
+  --color-bg-tertiary: #201F1D;  /* Card 2 Background */
+  --color-bg-hover: #252320;     /* Hover State */
 
-  /* Dark mode shadow */
-  --shadow-card: 0 8px 24px -4px rgba(0, 0, 0, 0.4);
+  /* --- Borders --- */
+  --color-border-subtle: #252320; /* --border */
+  --color-border-strong: #353330; /* --border-hi */
+
+  /* --- Text (High Contrast for Readability) --- */
+  --color-text-primary: #F5F3EE;   /* Brightest text for headings/main body */
+  --color-text-secondary: #C8C5BC; /* Slightly softer for subtext */
+  --color-text-dim: #7A7870;       /* Dim text for metadata */
+  --color-text-muted: #4A4845;     /* Placeholder text */
+
+  /* --- Accents --- */
+  --color-teal-400: #34d399;
+  --color-amber-400: #f59e0b;
+
+  /* --- Custom Glows & Shadows --- */
+  --shadow-brand: 0 4px 18px -4px rgba(216, 90, 48, 0.25);
+  --shadow-brand-hover: 0 10px 36px -6px rgba(216, 90, 48, 0.25);
+  --shadow-glow: 0 0 14px rgba(216, 90, 48, 0.25);
+  --shadow-glow-strong: 0 0 40px rgba(216, 90, 48, 0.6);
+
+  /* --- Custom Animations from your Theme --- */
+  --animate-fade-up: fadeUp 0.4s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+  --animate-float: float 2s ease infinite;
+  --animate-grad-shift: gradShift 4s ease infinite;
+  --animate-brand-glow: glow 3s ease infinite;
+
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(24px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  @keyframes float {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-12px); }
+  }
+  @keyframes gradShift {
+    0%, 100% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+  }
+  @keyframes glow {
+    0%, 100% { box-shadow: var(--shadow-glow); }
+    50% { box-shadow: var(--shadow-glow-strong); }
+  }
 }
 
+/* --- Global Resets & Scrollbars --- */
 html {
   scroll-behavior: smooth;
-  background-color: var(--color-bg-secondary);
-  color: var(--color-text-primary);
+  background-color: var(--color-bg-base); /* Applies deepest black everywhere */
+  color: var(--color-text-primary);       /* Applies high-contrast text everywhere */
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  overflow-x: hidden;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+}
+
+::-webkit-scrollbar {
+  width: 4px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--color-border-strong);
+  border-radius: 99px;
+}
+
+/* Base focus styles for accessibility */
+*:focus-visible {
+  outline: 2px solid var(--color-brand-400);
+  outline-offset: 2px;
 }

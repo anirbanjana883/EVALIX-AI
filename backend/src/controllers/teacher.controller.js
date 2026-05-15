@@ -1,5 +1,7 @@
 import { TeacherRepository } from '../repositories/teacher.repository.js';
 import { QuestionGeneratorAgent } from '../agents/generatorAgent.js';
+import { sendMailAsync } from '../services/mail.service.js';
+import { assignmentUploadTemplate } from '../services/mail.templates.js';
 
 export const TeacherController = {
   
@@ -49,7 +51,9 @@ export const TeacherController = {
   async overrideGrade(req, res) {
     try {
       const { submissionId, answerId } = req.params;
-      const { newScore, teacherFeedback } = req.body;
+      
+      // 🌟 THE FIX: Changed teacherFeedback to teacher_feedback to match the React payload
+      const { newScore, teacher_feedback } = req.body; 
 
       if (newScore === undefined) return res.status(400).json({ error: "New score is required" });
 
@@ -57,7 +61,7 @@ export const TeacherController = {
         submissionId, 
         answerId, 
         parseFloat(newScore), 
-        teacherFeedback
+        teacher_feedback // 🌟 Pass the corrected variable down
       );
 
       return res.status(200).json({

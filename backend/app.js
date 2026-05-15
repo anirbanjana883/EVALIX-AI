@@ -8,6 +8,7 @@ import uploadRoutes from './src/routes/upload.routes.js';
 import authRoutes from './src/routes/auth.routes.js';
 import assignmentRoutes from './src/routes/assignment.routes.js';
 import teacherRoutes from './src/routes/teacher.routes.js';
+import userRoutes from './src/routes/user.routes.js';
 
 const app = express();
 
@@ -45,6 +46,7 @@ app.use('/api', submitRoutes); // Creates: POST /api/submit
 app.use('/api/auth', authRoutes);
 app.use('/api/assignments', assignmentRoutes);
 app.use('/api/teacher', teacherRoutes);
+app.use('/api/user', userRoutes);
 
 // ============================================================================
 // 🩺 HEALTH CHECK & ERROR HANDLING

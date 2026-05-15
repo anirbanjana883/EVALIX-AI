@@ -13,332 +13,16 @@ import {
   Save,
   Edit3,
   BrainCircuit,
+  ShieldAlert,
+  XCircle,
+  TriangleAlert,
+  Flag
 } from "lucide-react";
 import toast from "react-hot-toast";
 
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3000";
 
-/* ─── Styles ─── */
-const injectStyles = () => {
-  if (document.getElementById("sr-styles")) return;
-  const s = document.createElement("style");
-  s.id = "sr-styles";
-  s.textContent = `
-    @import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500;600&display=swap');
-
-    :root {
-      --brand:      #D85A30;
-      --brand-dim:  #993C1D;
-      --brand-glow: rgba(216,90,48,.2);
-      --brand-g2:   rgba(216,90,48,.07);
-      --brand-g3:   rgba(216,90,48,.12);
-      --bg-base:    #131210;
-      --bg-panel:   #1A1917;
-      --bg-card:    #201F1D;
-      --bg-hover:   #272523;
-      --border:     #2E2D2A;
-      --border-hi:  #403E3A;
-      --txt-1:      #F5F3EE;
-      --txt-2:      #C8C5BC;
-      --txt-3:      #7A7870;
-      --emerald:    #34d399;
-      --emerald-g:  rgba(52,211,153,.1);
-      --emerald-b:  rgba(52,211,153,.2);
-      --amber:      #f59e0b;
-      --r-lg:       14px;
-      --r-md:       10px;
-      --r-sm:       7px;
-      --tx:         220ms cubic-bezier(.4,0,.2,1);
-    }
-    *,*::before,*::after { box-sizing: border-box; margin: 0; padding: 0 }
-    body { font-family: 'DM Sans', sans-serif; background: var(--bg-base); color: var(--txt-1); -webkit-font-smoothing: antialiased }
-    ::-webkit-scrollbar { width: 4px; height: 4px }
-    ::-webkit-scrollbar-track { background: transparent }
-    ::-webkit-scrollbar-thumb { background: var(--border-hi); border-radius: 99px }
-    @keyframes spin { to { transform: rotate(360deg) } }
-    @keyframes fadeUp { from { opacity:0; transform:translateY(10px) } to { opacity:1; transform:translateY(0) } }
-
-    /* ── Header ── */
-    .sr-header {
-      position: sticky; top: 0; z-index: 30;
-      background: var(--bg-panel);
-      border-bottom: 1px solid var(--border);
-      height: 64px;
-      display: flex; align-items: center; justify-content: space-between;
-      padding: 0 28px;
-      gap: 16px;
-    }
-    .sr-header-left { display: flex; align-items: center; gap: 14px; min-width: 0 }
-    .sr-brand { display: flex; align-items: center; gap: 10px; flex-shrink: 0 }
-    .sr-brand-ring {
-      width: 34px; height: 34px; border-radius: 50%;
-      border: 2px solid var(--brand);
-      background: var(--brand-g2);
-      display: flex; align-items: center; justify-content: center;
-      box-shadow: 0 0 10px var(--brand-glow);
-      flex-shrink: 0;
-    }
-    .sr-brand-name {
-      font-family: 'Syne', sans-serif; font-weight: 800;
-      font-size: 15px; letter-spacing: .06em; color: #fff;
-    }
-    .sr-brand-name span { color: var(--brand) }
-    .sr-divider { color: var(--border-hi); font-size: 18px; margin: 0 2px; flex-shrink: 0 }
-    .sr-page-title {
-      font-family: 'Syne', sans-serif; font-size: 16px;
-      font-weight: 700; color: #fff; letter-spacing: -.01em;
-      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-    }
-    .sr-page-sub { font-size: 11px; color: var(--txt-3); margin-top: 1px }
-    .sr-back-btn {
-      display: flex; align-items: center; justify-content: center;
-      width: 36px; height: 36px; border-radius: var(--r-sm);
-      border: 1px solid var(--border);
-      background: transparent; color: var(--txt-2);
-      cursor: pointer; transition: all var(--tx); flex-shrink: 0;
-    }
-    .sr-back-btn:hover { color: #fff; border-color: var(--border-hi); background: var(--bg-hover) }
-
-    /* ── Header right score/status ── */
-    .sr-header-right { display: flex; align-items: center; gap: 20px; flex-shrink: 0 }
-    .sr-score-block { text-align: right }
-    .sr-score-label {
-      font-size: 10px; color: var(--txt-3); text-transform: uppercase;
-      letter-spacing: .1em; font-weight: 600; margin-bottom: 2px;
-    }
-    .sr-score-value {
-      font-family: 'Syne', sans-serif; font-size: 20px; font-weight: 700; color: var(--brand);
-    }
-    .sr-score-max { font-size: 13px; color: var(--txt-2); font-weight: 400 }
-    .sr-divider-line {
-      width: 1px; height: 36px; background: var(--border-hi); flex-shrink: 0;
-    }
-    .sr-status-block { text-align: right }
-    .sr-status-label {
-      font-size: 10px; color: var(--txt-3); text-transform: uppercase;
-      letter-spacing: .1em; font-weight: 600; margin-bottom: 2px;
-    }
-    .sr-badge-graded {
-      display: inline-flex; align-items: center; gap: 5px;
-      font-size: 12px; font-weight: 600; color: var(--emerald);
-    }
-    .sr-badge-review {
-      display: inline-flex; align-items: center; gap: 5px;
-      font-size: 12px; font-weight: 600; color: var(--amber);
-    }
-
-    /* ── Loading / Empty ── */
-    .sr-center {
-      min-height: 100vh; display: flex; flex-direction: column;
-      align-items: center; justify-content: center;
-      gap: 14px; color: var(--txt-3);
-    }
-    .sr-center-title { font-family: 'Syne', sans-serif; font-size: 14px; font-weight: 700; color: var(--txt-2) }
-
-    /* ── Main ── */
-    .sr-main {
-      max-width: 1200px; margin: 0 auto;
-      padding: 28px 28px 80px;
-      display: flex; flex-direction: column; gap: 20px;
-    }
-
-    /* ── Answer Card ── */
-    .sr-answer-card {
-      background: var(--bg-card);
-      border: 1px solid var(--border);
-      border-radius: var(--r-lg);
-      overflow: hidden;
-      animation: fadeUp .3s ease forwards;
-    }
-
-    /* Question header */
-    .sr-q-head {
-      display: flex; align-items: flex-start; justify-content: space-between; gap: 16px;
-      padding: 18px 22px;
-      border-bottom: 1px solid var(--border);
-      background: var(--bg-panel);
-    }
-    .sr-q-head-left { display: flex; gap: 14px; align-items: flex-start }
-    .sr-q-num {
-      width: 30px; height: 30px; border-radius: 8px; flex-shrink: 0;
-      background: var(--bg-card); border: 1px solid var(--border-hi);
-      display: flex; align-items: center; justify-content: center;
-      font-family: 'Syne', sans-serif; font-size: 13px; font-weight: 700; color: var(--brand);
-    }
-    .sr-q-chip {
-      display: inline-block; padding: 2px 8px;
-      background: var(--bg-hover); border: 1px solid var(--border-hi);
-      border-radius: 4px; font-size: 10px; font-weight: 700;
-      color: var(--txt-3); letter-spacing: .1em; text-transform: uppercase;
-      margin-bottom: 6px; font-family: 'Syne', sans-serif;
-    }
-    .sr-q-text { font-size: 14.5px; color: var(--txt-1); line-height: 1.65; font-weight: 500 }
-    .sr-q-marks {
-      font-size: 12px; font-weight: 600; color: var(--txt-2);
-      flex-shrink: 0; white-space: nowrap;
-    }
-
-    /* Two-col body */
-    .sr-body-grid {
-      display: grid; grid-template-columns: 1fr 1fr;
-    }
-    .sr-col-left {
-      padding: 22px; border-right: 1px solid var(--border);
-      background: var(--bg-card);
-    }
-    .sr-col-right {
-      padding: 22px; background: var(--bg-panel);
-      display: flex; flex-direction: column;
-    }
-
-    /* Section labels */
-    .sr-section-label {
-      display: flex; align-items: center; gap: 7px;
-      font-size: 10.5px; font-weight: 700; color: var(--txt-3);
-      letter-spacing: .1em; text-transform: uppercase;
-      margin-bottom: 14px;
-    }
-
-    /* OCR text box */
-    .sr-ocr-box {
-      padding: 14px 16px;
-      background: var(--bg-panel); border: 1px solid var(--border-hi);
-      border-radius: var(--r-md);
-      font-size: 13.5px; color: var(--txt-2); font-style: italic; line-height: 1.65;
-    }
-    /* File link */
-    .sr-file-link {
-      display: flex; align-items: center; gap: 12px;
-      padding: 14px 16px;
-      background: var(--bg-panel); border: 1px solid var(--border-hi);
-      border-radius: var(--r-md);
-      text-decoration: none; transition: border-color var(--tx);
-      margin-top: 10px;
-    }
-    .sr-file-link:hover { border-color: var(--brand) }
-    .sr-file-icon {
-      padding: 8px; background: var(--bg-card); border-radius: 7px;
-      display: flex; align-items: center; justify-content: center; flex-shrink: 0;
-    }
-    .sr-file-title { font-size: 13.5px; font-weight: 600; color: var(--txt-1) }
-    .sr-file-sub { font-size: 11px; color: var(--txt-3); margin-top: 2px }
-
-    /* AI score badge */
-    .sr-ai-score-badge {
-      padding: 4px 12px; border-radius: 6px;
-      font-size: 11.5px; font-weight: 700; font-family: 'Syne', sans-serif;
-      border: 1px solid; transition: all var(--tx);
-    }
-    .sr-ai-score-active { background: var(--emerald-g); border-color: var(--emerald-b); color: var(--emerald) }
-    .sr-ai-score-struck { background: var(--bg-hover); border-color: var(--border-hi); color: var(--txt-3); text-decoration: line-through }
-
-    /* AI feedback box */
-    .sr-ai-box {
-      padding: 14px 16px;
-      background: var(--bg-card); border: 1px solid var(--border);
-      border-radius: var(--r-md);
-      font-size: 13.5px; color: var(--txt-2); line-height: 1.65;
-    }
-
-    /* Divider */
-    .sr-divider-h { width: 100%; height: 1px; background: var(--border); margin: 18px 0 }
-
-    /* HITL block */
-    .sr-hitl-head {
-      display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px;
-    }
-    .sr-override-link {
-      font-size: 12px; font-weight: 600; color: var(--brand);
-      background: none; border: none; cursor: pointer; padding: 0;
-      transition: color var(--tx);
-    }
-    .sr-override-link:hover { color: var(--brand-dim) }
-
-    /* Override form */
-    .sr-override-form { display: flex; flex-direction: column; gap: 12px }
-    .sr-override-row { display: flex; align-items: flex-end; gap: 12px }
-    .sr-field { display: flex; flex-direction: column; gap: 5px }
-    .sr-field-label {
-      font-size: 10px; font-weight: 700; color: var(--txt-3);
-      letter-spacing: .1em; text-transform: uppercase;
-    }
-    .sr-input {
-      padding: 8px 12px;
-      background: var(--bg-card); border: 1px solid var(--border-hi);
-      border-radius: var(--r-sm); color: var(--txt-1);
-      font-size: 13.5px; font-family: 'DM Sans', sans-serif;
-      outline: none; transition: border-color var(--tx);
-    }
-    .sr-input:focus { border-color: var(--brand) }
-    .sr-input-wide { flex: 1 }
-    .sr-input-score { width: 80px; text-align: center }
-
-    /* Override action buttons */
-    .sr-save-btn {
-      display: flex; align-items: center; gap: 7px;
-      padding: 8px 18px; border-radius: var(--r-sm);
-      background: var(--brand); border: none;
-      color: #fff; font-size: 13px; font-weight: 700;
-      font-family: 'Syne', sans-serif;
-      cursor: pointer; transition: background var(--tx), opacity var(--tx);
-    }
-    .sr-save-btn:hover { background: var(--brand-dim) }
-    .sr-save-btn:disabled { opacity: .4; cursor: not-allowed }
-    .sr-cancel-btn {
-      padding: 8px 14px; border-radius: var(--r-sm);
-      background: transparent; border: none;
-      color: var(--txt-2); font-size: 13px; font-weight: 600;
-      font-family: 'DM Sans', sans-serif; cursor: pointer;
-      transition: color var(--tx);
-    }
-    .sr-cancel-btn:hover { color: var(--txt-1) }
-
-    /* Override result chip */
-    .sr-override-result {
-      display: flex; align-items: center; justify-content: space-between;
-      padding: 14px 16px; border-radius: var(--r-md);
-      border: 1px solid;
-    }
-    .sr-override-result-active {
-      background: var(--brand-g3); border-color: rgba(216,90,48,.25);
-    }
-    .sr-override-result-ai {
-      background: var(--bg-card); border-color: var(--border);
-    }
-    .sr-override-result-name {
-      font-size: 13px; font-weight: 600; margin-bottom: 2px;
-    }
-    .sr-override-result-name-active { color: var(--brand) }
-    .sr-override-result-name-ai { color: var(--txt-2) }
-    .sr-override-feedback { font-size: 12px; color: var(--txt-3); margin-top: 2px }
-    .sr-override-score {
-      font-family: 'Syne', sans-serif; font-size: 20px; font-weight: 700; color: var(--txt-1);
-    }
-    .sr-override-score-dim { font-size: 13px; font-weight: 400; color: var(--txt-3) }
-
-    .sr-btn-row { display: flex; align-items: center; gap: 8px }
-
-    /* ── Responsive ── */
-    @media (max-width: 900px) {
-      .sr-body-grid { grid-template-columns: 1fr }
-      .sr-col-left { border-right: none; border-bottom: 1px solid var(--border) }
-    }
-    @media (max-width: 640px) {
-      .sr-header { padding: 0 16px; height: 56px }
-      .sr-page-sub { display: none }
-      .sr-main { padding: 16px 14px 80px }
-      .sr-score-block { display: none }
-      .sr-divider-line { display: none }
-      .sr-override-row { flex-direction: column; align-items: stretch }
-      .sr-input-score { width: 100% }
-    }
-  `;
-  document.head.appendChild(s);
-};
-
-/* ─── Component ─── */
 const SubmissionReview = () => {
-  injectStyles();
   const { submissionId } = useParams();
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -354,20 +38,30 @@ const SubmissionReview = () => {
       try {
         const { data: { session }, error: sessionError } = await supabase.auth.getSession();
         if (sessionError || !session) throw new Error("Authentication error.");
+        
         const response = await fetch(`${API_URL}/api/teacher/submissions/${submissionId}`, {
           headers: { Authorization: `Bearer ${session.access_token}` },
         });
+        
         if (!response.ok) {
           if (response.status === 404) throw new Error("Submission not found.");
           throw new Error("Failed to load submission data.");
         }
+        
         const json = await response.json();
-        if (json.submission) {
-          const calculatedMaxScore = (json.submission.answers || []).reduce(
-            (sum, ans) => sum + (ans.question?.max_marks || 0), 0
+        const data = json.data || json.submission; // Graceful fallback
+        
+        if (data) {
+          const calculatedMaxScore = (data.answers || []).reduce(
+            (sum, ans) => sum + (ans.max_marks || ans.question?.max_marks || 0), 0
           );
-          setSubmission({ ...json.submission, student_name: json.submission.student?.name || "Unknown Student", max_score: calculatedMaxScore });
-          setAnswers(json.submission.answers || []);
+          setSubmission({ 
+            ...data, 
+            student_name: data.student?.name || data.student_name || "Unknown Student", 
+            university_roll: data.student?.university_roll || "",
+            max_score: calculatedMaxScore 
+          });
+          setAnswers(data.answers || []);
         }
       } catch (error) {
         console.error(error);
@@ -385,28 +79,69 @@ const SubmissionReview = () => {
 
   const initOverride = (answer) => {
     if (!overrides[answer.id]) {
-      setOverrides((prev) => ({ ...prev, [answer.id]: { score: answer.score ?? 0, feedback: answer.teacher_feedback ?? "" } }));
+      setOverrides((prev) => ({ 
+        ...prev, 
+        [answer.id]: { score: answer.final_score ?? answer.ai_score ?? answer.score ?? 0, feedback: answer.teacher_feedback ?? "" } 
+      }));
     }
   };
 
+  // 🌟 FIX: Updated to use newScore and strictly parse numbers to prevent NaN
   const submitOverride = async (answerId, maxMarks) => {
     const overrideData = overrides[answerId];
     if (!overrideData) return;
-    if (overrideData.score < 0 || overrideData.score > maxMarks)
-      return toast.error(`Score must be between 0 and ${maxMarks}.`);
+    
+    // Safely parse the input as a strict number
+    const parsedScore = Number(overrideData.score);
+    if (isNaN(parsedScore) || parsedScore < 0 || parsedScore > maxMarks) {
+      return toast.error(`Score must be a valid number between 0 and ${maxMarks}.`);
+    }
+      
     setIsSaving(true);
     try {
       const { data: { session } } = await supabase.auth.getSession();
-      const payload = { newScore: Number(overrideData.score), teacherFeedback: overrideData.feedback };
+      
+      const payload = { 
+        newScore: parsedScore, // Using the newScore key as requested
+        teacher_feedback: overrideData.feedback 
+      };
+      
       const response = await fetch(
         `${API_URL}/api/teacher/submissions/${submissionId}/answers/${answerId}/override`,
-        { method: "PATCH", headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.access_token}` }, body: JSON.stringify(payload) }
+        { 
+          method: "PATCH", 
+          headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.access_token}` }, 
+          body: JSON.stringify(payload) 
+        }
       );
+      
       if (!response.ok) throw new Error("Failed to save override.");
-      const json = await response.json();
-      toast.success("Score updated successfully!");
-      setAnswers((prev) => prev.map((ans) => ans.id === answerId ? { ...ans, score: payload.newScore, teacher_feedback: payload.teacherFeedback } : ans));
-      if (json.newTotalScore !== undefined) setSubmission((prev) => ({ ...prev, total_score: json.newTotalScore }));
+      
+      toast.success("Grade successfully updated!");
+      
+      // Update local state synchronously to prevent NaN and stale closures
+      setAnswers((prevAnswers) => {
+        const updatedAnswers = prevAnswers.map((ans) => 
+          ans.id === answerId ? { 
+            ...ans, 
+            final_score: payload.newScore, 
+            score: payload.newScore, 
+            teacher_feedback: payload.teacher_feedback 
+          } : ans
+        );
+        
+        // Calculate new total safely inside the array update
+        const newTotal = updatedAnswers.reduce((sum, ans) => {
+          const val = Number(ans.final_score ?? ans.ai_score ?? ans.score ?? 0);
+          return sum + (isNaN(val) ? 0 : val);
+        }, 0);
+        
+        // Push safe new total to submission header
+        setSubmission((prevSub) => ({ ...prevSub, total_score: newTotal }));
+        
+        return updatedAnswers;
+      });
+      
       setOverrides((prev) => { const n = { ...prev }; delete n[answerId]; return n; });
     } catch (error) {
       console.error(error);
@@ -416,13 +151,13 @@ const SubmissionReview = () => {
     }
   };
 
-  const isImage = (url) => url && url.match(/\.(jpeg|jpg|gif|png)$/i) != null;
+  const isImage = (url) => url && url.match(/\.(jpeg|jpg|gif|png|webp)$/i) != null;
 
   if (isLoading) {
     return (
-      <div style={{ minHeight: "100vh", background: "var(--bg-base)" }} className="sr-center">
-        <Loader2 size={36} color="var(--brand)" style={{ animation: "spin 1s linear infinite" }} />
-        <span className="sr-center-title">Loading submission & AI insights…</span>
+      <div className="h-screen bg-bg-base flex flex-col items-center justify-center text-text-dim font-sans">
+        <Loader2 className="w-10 h-10 animate-spin text-brand-400 mb-4" />
+        <p className="font-display text-[14px] font-bold text-text-secondary tracking-wide">Loading submission & AI insights...</p>
       </div>
     );
   }
@@ -430,195 +165,318 @@ const SubmissionReview = () => {
   if (!submission) return null;
 
   return (
-    <div style={{ minHeight: "100vh", background: "var(--bg-base)", color: "var(--txt-1)", fontFamily: "'DM Sans', sans-serif" }}>
+    <div className="h-screen bg-bg-base text-text-primary font-sans flex flex-col overflow-hidden selection:bg-brand-400/30 selection:text-white">
 
       {/* ── Header ── */}
-      <header className="sr-header">
-        <div className="sr-header-left">
-          <div className="sr-brand">
-            <div className="sr-brand-ring"><BrainCircuit size={16} color="var(--brand)" /></div>
-            <span className="sr-brand-name">EVALIX <span>AI</span></span>
-          </div>
-          <span className="sr-divider">·</span>
-          <div style={{ minWidth: 0 }}>
-            <div className="sr-page-title">Review: {submission.student_name}</div>
-            <div className="sr-page-sub">Submission #{submission.id.substring(0, 8)}</div>
+      <header className="shrink-0 bg-bg-primary/90 backdrop-blur-lg border-b border-border-strong h-[68px] flex items-center justify-between px-6 z-30">
+        <div className="flex items-center gap-4">
+          <button 
+            className="w-9 h-9 rounded-[8px] bg-bg-secondary border border-border-strong flex items-center justify-center text-text-secondary hover:text-white hover:border-brand-400 transition-colors" 
+            onClick={() => navigate(-1)} 
+            title="Go back"
+          >
+            <ArrowLeft size={16} />
+          </button>
+          <div className="flex items-center gap-3 border-l border-border-strong pl-4 ml-1">
+            <div className="hidden sm:flex w-8 h-8 rounded-full border border-brand-400 bg-brand-400/10 items-center justify-center shrink-0">
+              <BrainCircuit size={14} className="text-brand-400" />
+            </div>
+            <div>
+              <h1 className="font-display text-[16px] font-bold text-white tracking-wide leading-tight">
+                Review: {submission.student_name}
+              </h1>
+              <p className="text-[11px] text-text-dim font-display tracking-widest uppercase mt-0.5">
+                {submission.university_roll ? `Roll: ${submission.university_roll}` : `Sub #${submission.id.substring(0, 8)}`}
+              </p>
+            </div>
           </div>
         </div>
 
-        <div className="sr-header-right">
-          <div className="sr-score-block">
-            <div className="sr-score-label">Final Score</div>
-            <div className="sr-score-value">
-              {submission.total_score}
-              <span className="sr-score-max"> / {submission.max_score}</span>
+        <div className="flex items-center gap-6">
+          <div className="flex items-center gap-6 bg-bg-secondary border border-border-strong rounded-xl px-4 py-2">
+            <div className="flex flex-col">
+              <span className="text-[10px] font-bold text-text-dim uppercase tracking-[0.1em] font-display">Final Score</span>
+              <div className="font-display font-extrabold text-[18px] text-white leading-none mt-1">
+                {submission.total_score}
+                <span className="text-brand-400 text-[14px]"> / {submission.max_score}</span>
+              </div>
+            </div>
+            <div className="w-[1px] h-8 bg-border-strong"></div>
+            <div className="flex flex-col">
+              <span className="text-[10px] font-bold text-text-dim uppercase tracking-[0.1em] font-display">Status</span>
+              <div className="mt-1">
+                {submission.status === "GRADED" ? (
+                  <span className="flex items-center gap-1.5 text-[12px] font-bold text-teal-400 font-display uppercase tracking-wide">
+                    <CheckCircle2 size={14} /> Finalized
+                  </span>
+                ) : (
+                  <span className="flex items-center gap-1.5 text-[12px] font-bold text-amber-400 font-display uppercase tracking-wide">
+                    <AlertCircle size={14} /> Needs Review
+                  </span>
+                )}
+              </div>
             </div>
           </div>
-          <div className="sr-divider-line" />
-          <div className="sr-status-block">
-            <div className="sr-score-label">Status</div>
-            {submission.status === "GRADED" ? (
-              <div className="sr-badge-graded"><CheckCircle2 size={14} /> Finalized</div>
-            ) : (
-              <div className="sr-badge-review"><AlertCircle size={14} /> Needs Review</div>
-            )}
-          </div>
-          <button className="sr-back-btn" onClick={() => navigate(-1)} title="Go back">
-            <ArrowLeft size={16} />
-          </button>
         </div>
       </header>
 
-      {/* ── Main ── */}
-      <main className="sr-main">
-        {answers.map((answer, index) => {
-          const finalScore = answer.score ?? 0;
-          const isOverridden = !!answer.teacher_feedback;
-          const isEditing = overrides[answer.id] !== undefined;
+      {/* ── Scrollable Main Content ── */}
+      <main className="flex-1 overflow-y-auto w-full p-6 lg:p-8 custom-scrollbar pb-24">
+        <div className="max-w-[1520px] mx-auto">
+          
+          {/* 🚨 Plagiarism High-Contrast Warning Banner */}
+          {submission.plagiarism_reports?.length > 0 && (
+            <div className="bg-red-500/10 border border-red-500/30 rounded-2xl p-5 mb-8 flex items-start gap-4 shadow-[0_0_20px_rgba(239,68,68,0.15)] animate-fade-up">
+               <div className="w-10 h-10 rounded-full bg-red-500/20 flex items-center justify-center shrink-0 border border-red-500/40">
+                 <ShieldAlert className="text-red-500 w-5 h-5" />
+               </div>
+               <div>
+                 <h3 className="text-red-500 font-display text-[16px] font-bold uppercase tracking-wide mb-1.5">Plagiarism Detected</h3>
+                 <div className="flex flex-col gap-1">
+                   {submission.plagiarism_reports.map((report, i) => (
+                     <p key={i} className="text-[13.5px] text-red-200/80 font-medium">
+                       Similarity Score: <strong className="text-white">{(report.similarity_score * 100).toFixed(1)}%</strong> semantic match found with <strong className="text-white">{report.matched_submission?.student?.name || "another student"}</strong>.
+                     </p>
+                   ))}
+                 </div>
+               </div>
+            </div>
+          )}
 
-          return (
-            <div key={answer.id} className="sr-answer-card" style={{ animationDelay: `${index * 60}ms` }}>
+          {/* Answers Mapping */}
+          <div className="flex flex-col gap-8">
+            {answers.map((answer, index) => {
+              const displayScore = answer.final_score ?? answer.ai_score ?? answer.score ?? 0;
+              const isOverridden = !!answer.teacher_feedback;
+              const isEditing = overrides[answer.id] !== undefined;
+              
+              const filesToDisplay = answer.file_urls || (answer.file_url ? [answer.file_url] : []);
+              const maxMarks = answer.max_marks || answer.question?.max_marks || 0;
 
-              {/* Question header */}
-              <div className="sr-q-head">
-                <div className="sr-q-head-left">
-                  <div className="sr-q-num">{index + 1}</div>
-                  <div>
-                    <div className="sr-q-chip">Question</div>
-                    <div className="sr-q-text">{answer.question?.question_text || "No question text."}</div>
-                  </div>
-                </div>
-                <div className="sr-q-marks">{answer.question?.max_marks || 0} pts</div>
-              </div>
-
-              {/* Body */}
-              <div className="sr-body-grid">
-
-                {/* ── Left: Student Submission ── */}
-                <div className="sr-col-left">
-                  <div className="sr-section-label">
-                    <User size={13} color="var(--brand)" /> Student Response
-                  </div>
-                  {answer.ocr_text && (
-                    <div className="sr-ocr-box">"{answer.ocr_text}"</div>
-                  )}
-                  {answer.file_url && (
-                    isImage(answer.file_url) ? (
-                      <div style={{ borderRadius: "var(--r-md)", overflow: "hidden", border: "1px solid var(--border-hi)", padding: 4, background: "var(--bg-panel)", marginTop: 10 }}>
-                        <img src={answer.file_url} alt="Student submission" style={{ width: "100%", height: "auto", borderRadius: "var(--r-sm)", display: "block" }} />
+              return (
+                <div key={answer.id} className="bg-bg-secondary border border-border-strong rounded-2xl overflow-hidden shadow-sm animate-fade-up" style={{ animationDelay: `${index * 50}ms` }}>
+                  
+                  {/* Question Header */}
+                  <div className="px-6 py-4 border-b border-border-strong bg-bg-primary flex items-start justify-between gap-4">
+                    <div className="flex items-start gap-4">
+                      <div className="w-9 h-9 rounded-full bg-bg-secondary border border-border-strong flex items-center justify-center font-display font-bold text-[14px] text-brand-400 shrink-0">
+                        {index + 1}
                       </div>
-                    ) : (
-                      <a href={answer.file_url} target="_blank" rel="noreferrer" className="sr-file-link">
-                        <div className="sr-file-icon"><FileText size={18} color="var(--brand)" /></div>
-                        <div>
-                          <div className="sr-file-title">View Uploaded Document</div>
-                          <div className="sr-file-sub">Opens in new tab</div>
-                        </div>
-                      </a>
-                    )
-                  )}
-                  {!answer.ocr_text && !answer.file_url && (
-                    <div className="sr-ai-box" style={{ color: "var(--txt-3)", fontStyle: "italic" }}>No response submitted.</div>
-                  )}
-                </div>
-
-                {/* ── Right: AI Evaluation + HITL ── */}
-                <div className="sr-col-right">
-
-                  {/* AI block */}
-                  <div>
-                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
-                      <div className="sr-section-label" style={{ marginBottom: 0 }}>
-                        <Bot size={13} color="var(--emerald)" /> AI Evaluation
+                      <div className="mt-0.5">
+                        <span className="inline-block px-2 py-0.5 rounded-md bg-bg-hover border border-border-strong text-[10px] font-bold text-text-dim tracking-widest uppercase font-display mb-1.5">
+                          Question
+                        </span>
+                        <h3 className="text-[15px] font-bold text-white leading-relaxed">
+                          {answer.question_text || answer.question?.question_text || "No question text."}
+                        </h3>
                       </div>
-                      <span className={`sr-ai-score-badge ${isOverridden ? "sr-ai-score-struck" : "sr-ai-score-active"}`}>
-                        Score: {finalScore} / {answer.question?.max_marks}
+                    </div>
+                    <div className="flex flex-col items-end gap-2 shrink-0">
+                      <span className="font-display font-bold text-[15px] text-text-secondary bg-bg-hover px-3 py-1 rounded-lg border border-border-strong">
+                        {maxMarks} pts
                       </span>
-                    </div>
-                    <div className="sr-ai-box">
-                      {answer.ai_feedback || "No AI feedback provided."}
-                    </div>
-                  </div>
-
-                  <div className="sr-divider-h" />
-
-                  {/* HITL block */}
-                  <div style={{ marginTop: "auto" }}>
-                    <div className="sr-hitl-head">
-                      <div className="sr-section-label" style={{ marginBottom: 0 }}>
-                        <Edit3 size={13} color="var(--brand)" /> Instructor Grading
-                      </div>
-                      {!isEditing && (
-                        <button className="sr-override-link" onClick={() => initOverride(answer)}>
-                          {isOverridden ? "Edit Override" : "Override Score"}
-                        </button>
+                      {answer.flagged && (
+                        <span className="flex items-center gap-1.5 text-[11px] font-bold text-red-400 bg-red-400/10 border border-red-400/20 px-2 py-1 rounded-md uppercase tracking-wide">
+                          <Flag size={12} /> Flagged by AI
+                        </span>
                       )}
                     </div>
-
-                    {isEditing ? (
-                      <div className="sr-override-form">
-                        <div className="sr-override-row">
-                          <div className="sr-field">
-                            <label className="sr-field-label">Final Score</label>
-                            <input
-                              type="number" min="0" max={answer.question?.max_marks}
-                              value={overrides[answer.id].score}
-                              onChange={(e) => handleOverrideChange(answer.id, "score", Number(e.target.value))}
-                              className="sr-input sr-input-score"
-                            />
-                          </div>
-                          <div className="sr-field" style={{ flex: 1 }}>
-                            <label className="sr-field-label">Remarks (Optional)</label>
-                            <input
-                              type="text" placeholder="Why are you overriding?"
-                              value={overrides[answer.id].feedback}
-                              onChange={(e) => handleOverrideChange(answer.id, "feedback", e.target.value)}
-                              className="sr-input sr-input-wide"
-                            />
-                          </div>
-                        </div>
-                        <div className="sr-btn-row">
-                          <button
-                            onClick={() => submitOverride(answer.id, answer.question?.max_marks)}
-                            disabled={isSaving}
-                            className="sr-save-btn"
-                          >
-                            {isSaving
-                              ? <Loader2 size={14} style={{ animation: "spin 1s linear infinite" }} />
-                              : <Save size={14} />}
-                            Update Grade
-                          </button>
-                          <button
-                            className="sr-cancel-btn"
-                            onClick={() => { const n = { ...overrides }; delete n[answer.id]; setOverrides(n); }}
-                          >
-                            Cancel
-                          </button>
-                        </div>
-                      </div>
-                    ) : (
-                      <div className={`sr-override-result ${isOverridden ? "sr-override-result-active" : "sr-override-result-ai"}`}>
-                        <div>
-                          <div className={`sr-override-result-name ${isOverridden ? "sr-override-result-name-active" : "sr-override-result-name-ai"}`}>
-                            {isOverridden ? "Manual Override Applied" : "Using AI Score"}
-                          </div>
-                          {isOverridden && answer.teacher_feedback && (
-                            <div className="sr-override-feedback">{answer.teacher_feedback}</div>
-                          )}
-                        </div>
-                        <div className="sr-override-score">
-                          {finalScore}
-                          <span className="sr-override-score-dim"> / {answer.question?.max_marks}</span>
-                        </div>
-                      </div>
-                    )}
                   </div>
 
+                  {/* Body Split Grid */}
+                  <div className="grid grid-cols-1 lg:grid-cols-2 divide-y lg:divide-y-0 lg:divide-x divide-border-strong">
+                    
+                    {/* ── Left Column: Student Submission ── */}
+                    <div className="p-6 bg-bg-secondary flex flex-col">
+                      <div className="flex items-center gap-2 mb-4">
+                        <User size={15} className="text-brand-400" /> 
+                        <h4 className="font-display text-[12px] font-bold text-text-dim uppercase tracking-[0.15em]">Student Response</h4>
+                      </div>
+                      
+                      <div className="flex-1 flex flex-col gap-4">
+                        {answer.ocr_text && (
+                          <div className="bg-bg-primary border border-border-strong rounded-xl p-4 text-[14px] text-text-secondary font-medium leading-relaxed italic border-l-4 border-l-brand-400 shadow-inner">
+                            "{answer.ocr_text}"
+                          </div>
+                        )}
+                        
+                        {filesToDisplay.length > 0 && filesToDisplay.map((fileUrl, fIdx) => (
+                          isImage(fileUrl) ? (
+                            <div key={fIdx} className="rounded-xl overflow-hidden border border-border-strong bg-bg-primary p-2">
+                              <img src={fileUrl} alt={`Student submission page ${fIdx+1}`} className="w-full h-auto rounded-lg block" />
+                            </div>
+                          ) : (
+                            <a key={fIdx} href={fileUrl} target="_blank" rel="noreferrer" className="flex items-center gap-4 p-4 rounded-xl border border-border-strong bg-bg-primary hover:border-brand-400 transition-colors group">
+                              <div className="w-12 h-12 rounded-lg bg-brand-400/10 flex items-center justify-center text-brand-400 group-hover:bg-brand-400 group-hover:text-white transition-colors">
+                                <FileText size={20} />
+                              </div>
+                              <div>
+                                <div className="text-[14px] font-bold text-white mb-0.5">View Uploaded Document {fIdx+1}</div>
+                                <div className="text-[12px] text-text-dim">Opens in new tab</div>
+                              </div>
+                            </a>
+                          )
+                        ))}
+                        
+                        {!answer.ocr_text && filesToDisplay.length === 0 && (
+                          <div className="flex items-center justify-center h-full min-h-[120px] bg-bg-primary border border-dashed border-border-strong rounded-xl text-[13px] text-text-dim italic">
+                            No response submitted.
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* ── Right Column: AI Evaluation & HITL ── */}
+                    <div className="p-6 bg-bg-primary flex flex-col">
+                      
+                      {/* AI Evaluation */}
+                      <div className="mb-8">
+                        <div className="flex items-center justify-between mb-5">
+                          <div className="flex items-center gap-2">
+                            <Bot size={15} className="text-teal-400" /> 
+                            <h4 className="font-display text-[12px] font-bold text-text-dim uppercase tracking-[0.15em]">AI Evaluation</h4>
+                          </div>
+                          <span className={`px-3 py-1 rounded-full text-[12px] font-bold font-display ${isOverridden ? "bg-bg-hover text-text-dim line-through border border-border-strong" : "bg-teal-400/10 text-teal-400 border border-teal-400/30"}`}>
+                            AI Score: {answer.ai_score ?? answer.score ?? 0} / {maxMarks}
+                          </span>
+                        </div>
+                        
+                        {/* Styled Lists for RAG Output */}
+                        <div className="flex flex-col gap-5">
+                          {answer.strengths?.length > 0 && (
+                            <div>
+                              <h5 className="text-[10px] font-bold text-teal-400 uppercase tracking-widest font-display mb-2">Strengths</h5>
+                              <ul className="flex flex-col gap-2">
+                                {answer.strengths.map((s, i) => (
+                                  <li key={i} className="flex items-start gap-2.5 text-[13.5px] text-text-secondary leading-snug">
+                                     <CheckCircle2 size={16} className="text-teal-400 shrink-0 mt-0.5" />
+                                     <span>{s}</span>
+                                  </li>
+                                ))}
+                              </ul>
+                            </div>
+                          )}
+
+                          {answer.weaknesses?.length > 0 && (
+                            <div>
+                              <h5 className="text-[10px] font-bold text-red-400 uppercase tracking-widest font-display mb-2">Weaknesses</h5>
+                              <ul className="flex flex-col gap-2">
+                                {answer.weaknesses.map((w, i) => (
+                                  <li key={i} className="flex items-start gap-2.5 text-[13.5px] text-text-secondary leading-snug">
+                                     <XCircle size={16} className="text-red-400 shrink-0 mt-0.5" />
+                                     <span>{w}</span>
+                                  </li>
+                                ))}
+                              </ul>
+                            </div>
+                          )}
+
+                          {answer.missing_concepts?.length > 0 && (
+                            <div>
+                              <h5 className="text-[10px] font-bold text-amber-400 uppercase tracking-widest font-display mb-2">Missing Concepts</h5>
+                              <ul className="flex flex-col gap-2">
+                                {answer.missing_concepts.map((m, i) => (
+                                  <li key={i} className="flex items-start gap-2.5 text-[13.5px] text-text-secondary leading-snug">
+                                     <TriangleAlert size={16} className="text-amber-400 shrink-0 mt-0.5" />
+                                     <span>{m}</span>
+                                  </li>
+                                ))}
+                              </ul>
+                            </div>
+                          )}
+                          
+                          {/* Fallback AI Feedback Text */}
+                          {!answer.strengths?.length && !answer.weaknesses?.length && !answer.missing_concepts?.length && (
+                             <div className="text-[13.5px] text-text-secondary leading-relaxed bg-bg-secondary p-4 rounded-xl border border-border-strong">
+                               {answer.ai_feedback || "No detailed AI feedback provided."}
+                             </div>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* HITL Override Section */}
+                      <div className="mt-auto pt-6 border-t border-border-strong">
+                        <div className="flex items-center justify-between mb-4">
+                          <div className="flex items-center gap-2">
+                            <Edit3 size={15} className="text-brand-400" /> 
+                            <h4 className="font-display text-[12px] font-bold text-text-dim uppercase tracking-[0.15em]">Instructor Grading</h4>
+                          </div>
+                          {!isEditing && (
+                            <button 
+                              className="text-[12px] font-bold text-brand-400 hover:text-brand-200 transition-colors uppercase tracking-wide font-display border border-brand-400/30 px-3 py-1 rounded-md hover:bg-brand-400/10" 
+                              onClick={() => initOverride(answer)}
+                            >
+                              {isOverridden ? "Edit Override" : "Override Score"}
+                            </button>
+                          )}
+                        </div>
+
+                        {isEditing ? (
+                          <div className="bg-bg-secondary border border-brand-400/40 rounded-xl p-5 shadow-[0_0_15px_rgba(216,90,48,0.1)]">
+                            <div className="flex flex-col sm:flex-row gap-4 mb-5">
+                              <div className="w-full sm:w-24 shrink-0">
+                                <label className="block text-[10px] font-bold text-text-dim uppercase tracking-[0.1em] mb-1.5 font-display">New Score</label>
+                                <input
+                                  type="number" min="0" max={maxMarks}
+                                  value={overrides[answer.id].score}
+                                  onChange={(e) => handleOverrideChange(answer.id, "score", e.target.value)}
+                                  className="w-full px-3 py-2 bg-bg-primary border border-border-strong rounded-lg text-[14px] font-bold text-brand-400 focus:outline-none focus:border-brand-400 focus:bg-bg-hover transition-all text-center"
+                                />
+                              </div>
+                              <div className="flex-1">
+                                <label className="block text-[10px] font-bold text-text-dim uppercase tracking-[0.1em] mb-1.5 font-display">Remarks (Optional)</label>
+                                <input
+                                  type="text" placeholder="Why are you overriding the AI?"
+                                  value={overrides[answer.id].feedback}
+                                  onChange={(e) => handleOverrideChange(answer.id, "feedback", e.target.value)}
+                                  className="w-full px-3 py-2 bg-bg-primary border border-border-strong rounded-lg text-[13px] text-white focus:outline-none focus:border-brand-400 focus:bg-bg-hover transition-all placeholder:text-text-muted"
+                                />
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-3">
+                              <button
+                                onClick={() => submitOverride(answer.id, maxMarks)}
+                                disabled={isSaving}
+                                className="flex-1 py-2.5 px-4 flex items-center justify-center gap-2 rounded-lg text-[13px] font-bold cursor-pointer transition-all border border-transparent bg-brand-400 text-white hover:bg-brand-600 font-display disabled:opacity-60 disabled:cursor-not-allowed"
+                              >
+                                {isSaving ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
+                                Save Grade
+                              </button>
+                              <button
+                                className="px-4 py-2.5 rounded-lg text-[13px] font-bold text-text-secondary hover:text-white border border-border-strong hover:bg-bg-hover transition-colors font-display"
+                                onClick={() => { const n = { ...overrides }; delete n[answer.id]; setOverrides(n); }}
+                              >
+                                Cancel
+                              </button>
+                            </div>
+                          </div>
+                        ) : (
+                          isOverridden && (
+                            <div className="bg-brand-400/5 border border-brand-400/30 rounded-xl p-4 flex items-center justify-between gap-4">
+                              <div>
+                                <div className="text-[13px] font-bold text-brand-400 font-display mb-1 flex items-center gap-1.5">
+                                  <User size={14} /> Manual Override Applied
+                                </div>
+                                {answer.teacher_feedback && (
+                                  <div className="text-[13px] text-text-secondary italic">"{answer.teacher_feedback}"</div>
+                                )}
+                              </div>
+                              <div className="text-[20px] font-extrabold text-white font-display shrink-0">
+                                {displayScore} <span className="text-[14px] text-text-dim font-medium">/ {maxMarks}</span>
+                              </div>
+                            </div>
+                          )
+                        )}
+                      </div>
+
+                    </div>
+                  </div>
                 </div>
-              </div>
-            </div>
-          );
-        })}
+              );
+            })}
+          </div>
+
+        </div>
       </main>
     </div>
   );

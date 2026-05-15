@@ -1,12 +1,11 @@
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient } from "@prisma/client";
 const prisma = new PrismaClient();
 
 export const SubmissionRepository = {
-  
   async getAssignmentWithQuestions(assignmentId) {
     return await prisma.assignment.findUnique({
       where: { id: assignmentId },
-      include: { questions: true }
+      include: { questions: true },
     });
   },
 
@@ -15,9 +14,9 @@ export const SubmissionRepository = {
       where: {
         assignment_id_student_id: {
           assignment_id: assignmentId,
-          student_id: studentId
-        }
-      }
+          student_id: studentId,
+        },
+      },
     });
   },
 
@@ -26,43 +25,80 @@ export const SubmissionRepository = {
       data: {
         student_id: studentId,
         assignment_id: assignmentId,
-        status: 'PENDING',
+        status: "PROCESSING",
         answers: {
-          create: answers.map(ans => ({
+          create: answers.map((ans) => ({
             question_id: ans.questionId,
-            file_url: ans.fileUrl || null,
+
+            // 🌟 THE FIX: Save the array of URLs instead of a single string
+            // Make sure your frontend sends 'fileUrls' instead of 'fileUrl'
+            file_urls: ans.fileUrls || [],
+
             mcq_selected: ans.selectedOption || null,
-            status: 'PENDING'
-          }))
-        }
+            status: "PENDING",
+          })),
+        },
       },
-      include: { answers: true }
+      include: { answers: true },
     });
   },
 
-  async updateAnswerResult(submissionId, questionId, cleanText, score, feedbackString) {
+  // 🌟 UPDATED: Now receives structured OCR and AI data objects
+  async updateAnswerResult(submissionId, questionId, ocrData, evalData) {
     await prisma.answer.update({
-      where: { submission_id_question_id: { submission_id: submissionId, question_id: questionId } },
+      where: {
+        submission_id_question_id: {
+          submission_id: submissionId,
+          question_id: questionId,
+        },
+      },
       data: {
-        ocr_text: cleanText,
-        score: score,
-        ai_feedback: feedbackString, 
-        status: 'EVALUATED'
-      }
+        // OCR Fields
+        ocr_text: ocrData.text,
+        ocr_confidence: ocrData.confidence,
+
+        // Evaluation Fields
+        score: evalData.score,
+        ai_feedback: evalData.feedback,
+        strengths: evalData.strengths,
+        weaknesses: evalData.weaknesses,
+        missing_concepts: evalData.missingConcepts,
+        eval_confidence: evalData.evalConfidence,
+        flagged: evalData.flagged,
+
+        status: "EVALUATED",
+      },
     });
   },
 
   async markAnswerFailed(submissionId, questionId) {
     await prisma.answer.update({
-      where: { submission_id_question_id: { submission_id: submissionId, question_id: questionId } },
-      data: { status: 'FAILED' }
+      where: {
+        submission_id_question_id: {
+          submission_id: submissionId,
+          question_id: questionId,
+        },
+      },
+      data: {
+        status: "FAILED",
+        flagged: true, // Force teacher review if AI crashed
+      },
     });
   },
 
-  async finalizeSubmissionScore(submissionId, totalScore) {
+  // 🌟 UPDATED: Accepts the global requiresReview flag
+  async finalizeSubmissionScore(
+    submissionId,
+    totalScore,
+    requiresReview = false,
+  ) {
     await prisma.submission.update({
       where: { id: submissionId },
-      data: { total_score: totalScore, status: 'GRADED' }
+      data: {
+        total_score: totalScore,
+        status: "GRADED",
+        requires_review: requiresReview,
+      },
     });
   },
 
@@ -71,19 +107,36 @@ export const SubmissionRepository = {
       where: {
         assignment_id_student_id: {
           assignment_id: assignmentId,
-          student_id: studentId
-        }
+          student_id: studentId,
+        },
       },
       include: {
+        // 1. Fetch the original assignment and questions
         assignment: {
           include: {
-            // Now that the test is over, it is safe to send the questions WITH the model_answer
-            questions: true 
-          }
+            questions: true,
+          },
         },
-        answers: true
-      }
-    });
-  }
 
+        // 2. Fetch answers ordered nicely (this automatically includes strengths/weaknesses JSON!)
+        answers: {
+          orderBy: { question_id: "asc" },
+        },
+
+        // 3. 🚨 PRIVACY-SAFE PLAGIARISM FETCH
+        // We only show the score and status. We hide 'matched_submission_id'
+        // so students don't know who they matched with!
+        plagiarism_reports: {
+          select: {
+            similarity_score: true,
+            status: true,
+            created_at: true,
+          },
+        },
+
+        // 4. 👨‍🏫 Fetch Teacher Review to show manual grade overrides
+        teacher_review: true,
+      },
+    });
+  },
 };

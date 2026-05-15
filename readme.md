@@ -1,423 +1,369 @@
-# 🚀 EVALIX AI - Enterprise-Grade AI Exam Evaluation Platform
-
+# EVALIX AI
 <p align="center">
   <img src="./frontend/src/assets/logo.jpeg" alt="Evaluator.ai Logo" width="200"/>
 </p>
 
-Transform academic grading with multimodal AI evaluation, automated rubrics, and seamless Human-in-the-Loop (HITL) overrides.
 
-## 📋 Table of Contents
+> Enterprise-Grade AI Exam Evaluation Platform
+
+Transform academic grading with multimodal AI evaluation, RAG-powered syllabus context, automated rubrics, vector-based plagiarism detection, and seamless Human-in-the-Loop (HITL) overrides.
+
+---
+
+## Table of Contents
 
 - [Overview](#overview)
 - [Problem Statement](#problem-statement)
-- [Solution](#solution)
+- [Solution Workflow](#solution-workflow)
 - [Architecture](#architecture)
 - [Engineering Challenges Overcome](#engineering-challenges-overcome)
-- [Features](#features)
+- [Core Features](#core-features)
 - [Tech Stack](#tech-stack)
-- [Detailed API Reference](#detailed-api-reference)
-- [Installation & Setup](#installation-setup)
-- [Environment Configuration](#environment-configuration)
-- [Running the Application](#running-the-application)
+- [API Reference](#api-reference)
+- [Installation & Setup](#installation--setup)
 - [Project Structure](#project-structure)
-- [Future Industry Roadmap](#future-industry-roadmap)
+- [Future Roadmap](#future-roadmap)
 - [Contributing](#contributing)
 
 ---
 
-<a id="overview"></a>
-## 🎯 Overview
+## Overview
 
-Evaluator.ai is an intelligent, automated grading platform designed for educational institutions. It handles both traditional Multiple Choice Questions (MCQs) and complex Descriptive (handwritten) answers.
+EVALIX AI is an intelligent, automated grading platform designed for educational institutions. It handles both traditional Multiple Choice Questions (MCQs) and complex descriptive (handwritten) answers across multiple pages.
 
-By leveraging cutting-edge multimodal Large Language Models (LLMs), the platform reads student handwriting, compares it against a teacher's "Gold Standard" Model Answer, assigns a calculated score, and generates highly detailed, constructive feedback—all while allowing the teacher to retain ultimate control via manual overrides.
-
----
-
-<a id="problem-statement"></a>
-## 🔍 Problem Statement
-
-### The Challenge
-
-- 📝 **Subjectivity & Fatigue:** Manual grading of descriptive answers is highly subjective and exhausts educators.
-- ⏳ **Delayed Feedback:** Students wait weeks for exam results, severing the learning loop.
-- 🤖 **Legacy Tech Failures:** Traditional OCR systems fail miserably at reading messy student handwriting or diagrams.
-- 📊 **Administrative Overhead:** Setting papers, aligning to syllabi, and calculating batch-wise analytics takes up valuable teaching time.
+By leveraging cutting-edge multimodal LLMs and Retrieval-Augmented Generation (RAG), the platform reads messy student handwriting, retrieves context directly from the teacher's syllabus via `pgvector`, checks for plagiarism, and calculates a highly accurate score with detailed constructive feedback. It also features an automated **Quarantine Zone** to catch suspected cheating, allowing teachers to retain ultimate control via manual overrides.
 
 ---
 
-<a id="solution"></a>
-## 💡 Solution
+## Problem Statement
 
-Evaluator.ai automates the examination lifecycle:
+| Challenge | Details |
+|---|---|
+| Subjectivity & Fatigue | Manual grading of descriptive answers is highly subjective and exhausts educators |
+| Legacy OCR Failures | Traditional OCR systems fail on messy handwriting and cannot stitch multi-page answers |
+| AI Hallucinations | Out-of-the-box LLMs grade based on internet data, not the specific syllabus taught in class |
+| Plagiarism Detection | Hard to detect copied text across hundreds of handwritten submissions |
+| Administrative Overhead | Setting papers and notifying students takes valuable teacher time |
+
+---
+
+## Solution Workflow
 
 ```
-Teacher Creates Exam (Model Answers + Time-Locks)
+Teacher Creates Exam (Uploads Syllabus for Vector Embeddings)
          ↓
-Student Uploads Handwritten Answer Sheets / Selects MCQs
+System Dispatches Bulk Email Alerts to Target Cohort
          ↓
-AI Vision Agent (Handwriting Extraction)
+Student Uploads Multi-Page Handwritten Answers
          ↓
-AI Evaluator Agent (Scores against Model Answer + Generates Feedback)
+Background Pipeline Triggered:
+  1. OCR Agent         (Multi-page stitching & confidence scoring)
+  2. Plagiarism Service (Vector search against peer submissions)
+  3. RAG Service        (Retrieves specific syllabus context)
+  4. LLM Agent          (Scores & generates structured feedback)
          ↓
-Teacher Dashboard (Split-screen review & Human Override)
+Quarantine Check: If Flagged / Plagiarized → Lock Submission
+         ↓
+Teacher Dashboard (Split-screen review, hits "Override" to unlock)
          ↓
 Time-Lock Expires → Student Views Detailed Analytics
 ```
 
-### Key Value Propositions
-
-- ✅ **Automated Descriptive Grading:** Near-instant evaluation of essays and technical answers.
-- ✅ **Bulletproof Security:** Strict time-locks prevent students from accessing exams early or viewing results before the release date.
-- ✅ **Human-in-the-Loop (HITL):** Teachers can seamlessly override AI scores and leave personal remarks.
-- ✅ **AI Exam Generator:** Instantly generate new test papers based on syllabi and Past Year Questions (PYQs).
-
 ---
 
-<a id="architecture"></a>
-## 🏗️ Architecture
-
-### System Components
+## Architecture
 
 ```
 ┌─────────────────────────────────────────────────────┐
 │             Frontend (React + Vite)                 │
 │  - Teacher Dashboard, Split-Screen Grader           │
-│  - Student Exam Portal, Result Analytics            │
+│  - Student Exam Portal, Quarantine Warning UI       │
 └──────────────────┬──────────────────────────────────┘
-                   │
-                   ↓ HTTP/REST (Express.js)
+                   │ HTTP / REST (Express.js)
+                   ↓
 ┌─────────────────────────────────────────────────────┐
 │             Backend Pipeline (Node.js)              │
-│  - Role-Based Access Control (RBAC)                 │
-│  - Background Evaluation Workers                    │
-│  - Supabase Auth & Storage Integration              │
+│  - RBAC & Mailing Engine (Nodemailer / SendGrid)    │
+│  - Multi-page Uploads (Supabase Storage)            │
+│  - AI Evaluation Background Workers                 │
 └──────────┬──────────────────────────┬───────────────┘
            │                          │
            ↓                          ↓
-    ┌────────────────┐        ┌──────────────────┐
-    │ Gemini 2.5 Pro │        │ Gemini 2.5 Flash │
-    │ (Vision / OCR) │        │ (Evaluation)     │
-    └────────────────┘        └──────────────────┘
+  ┌────────────────┐        ┌──────────────────┐
+  │ Gemini 2.5 Pro │        │ Gemini 2.5 Flash │
+  │ (Vision / OCR) │        │  (Evaluation)    │
+  └────────────────┘        └──────────────────┘
+           │                          │
            ↓                          ↓
-    ┌───────────────────────────────────────────┐
-    │     Database (PostgreSQL + Prisma)        │
-    │     - Users, Submissions, Answers         │
-    └───────────────────────────────────────────┘
+  ┌───────────────────────────────────────────┐
+  │    Database (PostgreSQL + Prisma)         │
+  │    - Relational Data (Users, Answers)     │
+  │    - pgvector (Syllabus & Plagiarism)     │
+  └───────────────────────────────────────────┘
 ```
 
 ---
 
-<a id="engineering-challenges-overcome"></a>
-## 🛡️ Engineering Challenges Overcome
+## Engineering Challenges Overcome
 
-### 1. The Handwriting OCR Bottleneck
+### 1. Multi-Page Handwriting Stitching & Confidence Scoring
 
-**The Problem:** Initially, we attempted to extract text from student uploads using traditional OCR engines like Tesseract and Google Cloud Vision. However, these systems struggled heavily with:
-- Messy, cursive, or overlapping student handwriting.
-- Mathematical symbols and pseudo-code.
-- Images uploaded at rotated or skewed angles.
+**Problem:** Students rarely submit answers on a single page. Legacy OCR failed on messy handwriting, and handling multiple images per question broke standard AI pipelines.
 
-**The Solution:** We entirely ripped out the legacy OCR pipeline and implemented a Multimodal LLM approach. We built an `ocrAgent` that passes the raw base64 image directly to Google Gemini 2.5 Flash with a strict transcription prompt. The LLM's spatial reasoning easily deciphers messy handwriting, completely bypassing traditional OCR limitations and yielding near-perfect text extraction for the evaluation phase.
-
-### 2. Database Normalization vs. Query Speed
-
-**The Problem:** The initial architecture used complex JSON arrays to store evaluation rubrics (`matchedConcepts`, `missedConcepts`). This caused parsing errors and made PostgreSQL queries incredibly slow and difficult to maintain.
-
-**The Solution:** We refactored the database schema to use a single `model_answer` standard. The AI directly compares the student text to this string, outputting a pure integer score and an `ai_feedback` text block. This flattened the database relations, vastly improved query speed, and eliminated JSON parsing crashes.
+**Solution:** The schema was upgraded to accept `file_urls` arrays, iterating through multiple Supabase URLs asynchronously. A Multimodal LLM acts as the OCR agent — transcribing and stitching text across pages while assigning an overall **Confidence Score** to flag unreadable uploads.
 
 ---
 
-<a id="features"></a>
-## ✨ Features
+### 2. Context-Aware Grading (RAG Integration)
+
+**Problem:** AI models would mark answers "correct" based on advanced university-level knowledge, even when it violated the simpler definition taught in a high-school syllabus.
+
+**Solution:** `pgvector` was integrated into the pipeline. When a teacher creates an exam, the syllabus is embedded into 768-dimensional vectors. During evaluation, the `RagService` retrieves the exact formulas or definitions relevant to the student's OCR text and injects them into the LLM prompt — the AI now grades strictly based on what was taught.
+
+---
+
+### 3. The Anti-Cheat Quarantine Zone
+
+**Problem:** If AI blindly releases scores for plagiarized or deeply flawed submissions, academic integrity is compromised.
+
+**Solution:** A strict `requires_review` flag is enforced at the database level. If the AI detects plagiarism via vector similarity, outputs a low confidence score, or flags abnormal answers, the submission enters a **Quarantine Zone**. The student-facing API is blocked from sending scores and displays a "Submission Under Review" warning until the teacher manually overrides and approves the grade.
+
+---
+
+## Core Features
 
 ### Teacher Features
 
-- **AI Question Generator:** Paste a syllabus and PYQs to generate a JSON array of new questions, exportable directly to Excel (.xlsx).
-- **Split-Screen Review:** View the student's raw upload, the AI's feedback, and the Model Answer side-by-side.
-- **One-Click Overrides:** Manually adjust scores and leave `teacher_feedback` without breaking the original AI evaluation data.
+- **RAG-Powered AI Exam Generator** — Paste a syllabus to auto-generate questions. The syllabus is vectorized for context-aware grading.
+- **Split-Screen Review** — View uploaded images, extracted OCR text, AI structured feedback (Strengths/Weaknesses), and model answer side-by-side.
+- **Human-in-the-Loop (HITL) Override** — Adjust scores, leave `teacher_feedback`, and unlock quarantined submissions.
 
 ### Student Features
 
-- **Cohort-Based Routing:** Assignments are automatically routed based on the student's Academic Year and Batch.
-- **Dynamic UI Rendering:** The Results View intelligently swaps between MCQ layouts (with color-coded correctness) and Descriptive layouts (with uploaded images and detailed feedback).
-- **Real-time Status Updates:** Dashboard badges indicate whether an exam is `Live`, `Pending Results`, or `Graded`.
+- **Multi-Image Uploads** — Upload 5+ pages for complex descriptive questions.
+- **Smart Result Analytics** — Detailed AI breakdowns of missing concepts, or a secure Quarantine UI if flagged.
+- **Automated Email Notifications** — Instant alerts when new exams are assigned, and confirmation receipts upon submission.
 
 ---
 
-<a id="tech-stack"></a>
-## 🛠️ Tech Stack
+## Tech Stack
 
 ### Backend
+
 | Technology | Purpose |
-|-----------|---------|
-| **Node.js + Express 5** | Core API server framework |
-| **Prisma ORM** | Type-safe database interactions |
-| **PostgreSQL** | Primary relational database |
-| **Google GenAI SDK** | Integration with primary Gemini models (Vision & Text) |
-| **OpenAI SDK** | Used for routing requests to Groq (Llama fallback models) |
-| **Supabase JS** | Handles secure file uploads directly to Supabase Storage buckets (replaced Multer) and Auth |
+|---|---|
+| Node.js + Express 5 | Core API server framework |
+| Prisma ORM + PostgreSQL | Relational database handling |
+| pgvector | High-performance vector similarity search (RAG & Plagiarism) |
+| Google GenAI SDK | Integrates Gemini 2.5 Flash/Pro for Vision, Embeddings, and Text |
+| Supabase JS | Secure file array uploads and Auth |
+| Nodemailer | Background dispatch engine for student alerts |
 
 ### Frontend
+
 | Technology | Purpose |
-|-----------|---------|
-| **React 19 + Vite 8** | High-performance UI framework and blazing-fast build tool |
-| **Tailwind CSS 4** | Utility-first styling for a sleek, modern UI |
-| **React Router v7** | Client-side routing for seamless dashboard navigation |
-| **Lucide React** | Clean, consistent iconography across the application |
-| **XLSX** | Browser-side Excel (`.xlsx`) generation for the AI Exam Setter |
-| **React Hot Toast** | Elegant, real-time toast notifications for user feedback |
-| **Supabase JS** | Frontend authentication state management |
-
-### Infrastructure
-- **Supabase Auth:** JWT-based user authentication.
-- **Supabase Storage:** Secure, scalable hosting for student exam paper image uploads.
+|---|---|
+| React 19 + Vite 8 | High-performance UI framework |
+| Tailwind CSS 4 | Utility-first styling |
+| Lucide React | Clean, consistent iconography |
+| XLSX | Browser-side Excel generation for the AI Exam Setter |
 
 ---
 
-<a id="detailed-api-reference"></a>
-## 🖧 Detailed API Reference
+## API Reference
 
-All routes are protected by `requireAuth` (JWT validation). Role-specific routes utilize `requireStudent` or `requireTeacher` middleware to enforce strict RBAC.
-
-### 1. Authentication (`/api/auth`)
+### Assignments — `/api/assignments`
 
 | Method | Endpoint | Role | Description |
 |---|---|---|---|
-| POST | `/sync` | Any | Syncs the Supabase user to the PostgreSQL User table upon first login. |
+| POST | `/` | Teacher | Creates an assignment, embeds syllabus to pgvector, dispatches bulk emails |
+| GET | `/student` | Student | Fetches exams targeted to the student's Year/Batch |
+| GET | `/:id/result` | Student | Fetches results; returns restricted data if `is_quarantined` is true |
 
-### 2. Assignments (`/api/assignments`)
-
-| Method | Endpoint | Role | Description |
-|---|---|---|---|
-| POST | `/` | Teacher | Creates a new assignment with questions, model answers, and time-locks. |
-| GET | `/student` | Student | Fetches all assignments targeted to the student's Department, Year, and Batch. |
-| GET | `/:id` | Any | Fetches assignment details (Sanitizes `model_answer` for students if exam is live). |
-| GET | `/:id/result` | Student | Fetches evaluated results. Protected by `release_marks_at` time-lock. |
-
-### 3. Submissions (`/api/submissions` or `/api/submit`)
+### Submissions & Uploads — `/api/submit` & `/api/upload`
 
 | Method | Endpoint | Role | Description |
 |---|---|---|---|
-| POST | `/submit` | Student | Receives student answers. Triggers immediate grading for MCQs or background AI evaluation for Descriptive tests. Prevents double submissions. |
+| POST | `/upload` | Student | Accepts multiple images (`upload.array`) and returns Supabase URLs |
+| POST | `/submit` | Student | Triggers the background AI pipeline (OCR → Plagiarism → RAG → Grading) |
 
-### 4. Teacher Operations (`/api/teacher`)
-
-| Method | Endpoint | Role | Description |
-|---|---|---|---|
-| GET | `/dashboard` | Teacher | Retrieves overview stats, active exams, and pending evaluations. |
-| GET | `/assignments/:id` | Teacher | Retrieves all student submissions for a specific assignment. |
-| GET | `/submissions/:submissionId` | Teacher | Fetches a full student submission for split-screen review. |
-| PATCH | `/submissions/:subId/answers/:ansId/override` | Teacher | Updates the score and appends `teacher_feedback`. Recalculates total score. |
-| POST | `/generate-questions` | Teacher | Calls the LLM Agent to generate new questions based on provided syllabus/PYQs. |
-
-### 5. File Uploads (`/api/upload`)
+### Teacher Operations — `/api/teacher`
 
 | Method | Endpoint | Role | Description |
 |---|---|---|---|
-| POST | `/` | Student | Uploads `examFile` to Supabase Storage via Multer memory buffer and returns the public URL. |
+| GET | `/submissions/:submissionId` | Teacher | Fetches full submission with AI feedback and flagged metrics |
+| PATCH | `/answers/:answerId/override` | Teacher | Updates score/feedback and clears the `requires_review` quarantine flag |
 
 ---
 
-<a id="installation-setup"></a>
-## 🚀 Installation & Setup
+## Installation & Setup
 
 ### Prerequisites
 
-- Node.js (v18+)
-- PostgreSQL Database
-- Supabase Project (Auth & Storage buckets configured)
+- Node.js v18+
+- PostgreSQL with the `pgvector` extension enabled
+- Supabase project
 - Google Gemini API Key
 
-### Step 1: Clone the Repository
+### Setup
 
 ```bash
+# Clone the repository
 git clone https://github.com/anirbanjana883/EVALIX-AI.git
-cd evaluator-ai
-```
+cd EVALIX-AI
 
-### Step 2: Backend Setup
-
-```bash
+# Backend
 cd backend
 npm install
-
-# Generate Prisma Client
 npx prisma generate
-
-# Push schema to PostgreSQL
 npx prisma db push
-```
+npm run dev
 
-### Step 3: Frontend Setup
-
-```bash
+# Frontend
 cd ../frontend
 npm install
-```
-
----
-
-<a id="environment-configuration"></a>
-## ⚙️ Environment Configuration
-
-### Backend (`backend/.env`)
-
-```
-DATABASE_URL="postgresql://postgres:password@localhost:5432/evaluator"
-DIRECT_URL="postgresql://postgres:password@localhost:5432/evaluator"
-
-GEMINI_API_KEY="your_google_gemini_key"
-
-SUPABASE_URL="https://your-project.supabase.co"
-SUPABASE_SERVICE_ROLE_KEY="your_service_role_key"
-
-PORT=3000
-```
-
-### Frontend (`frontend/.env`)
-
-```
-VITE_SUPABASE_URL="https://your-project.supabase.co"
-VITE_SUPABASE_ANON_KEY="your_anon_key"
-VITE_API_URL="http://localhost:3000"
-```
-
----
-
-<a id="running-the-application"></a>
-## 🎮 Running the Application
-
-**Start the Backend Server:**
-
-```bash
-cd backend
 npm run dev
-# Server running on http://localhost:3000
-```
-
-**Start the Frontend Client:**
-
-```bash
-cd frontend
-npm run dev
-# Client running on http://localhost:5173
 ```
 
 ---
 
-<a id="project-structure"></a>
-## 📁 Project Structure
+## Project Structure
 
-```text
+```
 EXAM-EVALUATOR/
-├── backend/                             # Node.js + Express Backend
+├── .vscode/
+├── backend/
+│   ├── node_modules/
 │   ├── prisma/
-│   │   ├── schema.prisma                # PostgreSQL database models
-│   │   └── seed.js                      # Initial database seeding
+│   │   ├── schema.prisma
+│   │   └── seed.js
 │   ├── src/
-│   │   ├── agents/                      # LLM Integration (Google Gemini)
-│   │   │   ├── generatorAgent.js        # AI Exam Setter
-│   │   │   ├── llmAgent.js              # AI Evaluation & Feedback
-│   │   │   └── ocrAgent.js              # AI Handwriting Extraction (Vision)
+│   │   ├── agents/
+│   │   │   ├── generatorAgent.js
+│   │   │   ├── llmAgent.js
+│   │   │   └── ocrAgent.js
 │   │   ├── config/
-│   │   │   └── supabase.js              # Supabase storage client
-│   │   ├── controllers/                 # API request handling logic
+│   │   │   └── supabase.js
+│   │   ├── controllers/
 │   │   │   ├── assignment.controller.js
 │   │   │   ├── auth.controller.js
 │   │   │   ├── submission.controller.js
 │   │   │   ├── teacher.controller.js
-│   │   │   └── upload.controller.js
-│   │   ├── middlewares/                 # Security & RBAC
-│   │   │   ├── auth.middleware.js       # JWT validation
-│   │   │   └── role.middleware.js       # Student/Teacher access control
-│   │   ├── repositories/                # Prisma Database interactions
+│   │   │   ├── upload.controller.js
+│   │   │   └── user.controller.js
+│   │   ├── middlewares/
+│   │   │   ├── auth.middleware.js
+│   │   │   └── role.middleware.js
+│   │   ├── repositories/
 │   │   │   ├── assignment.repository.js
+│   │   │   ├── plagiarism.repository.js
+│   │   │   ├── rag.repository.js
 │   │   │   ├── submission.repository.js
 │   │   │   ├── teacher.repository.js
 │   │   │   └── user.repository.js
-│   │   ├── routes/                      # Express API endpoints
+│   │   ├── routes/
 │   │   │   ├── assignment.routes.js
 │   │   │   ├── auth.routes.js
 │   │   │   ├── submit.routes.js
 │   │   │   ├── teacher.routes.js
-│   │   │   └── upload.routes.js
-│   │   └── services/                    # Business logic & Workers
-│   │       ├── ai.evaluator.js          # Descriptive grading pipeline
-│   │       ├── auth.service.js
-│   │       ├── mcq.evaluator.js         # Instant MCQ grading
-│   │       └── storage.service.js       # File upload handling
-│   ├── app.js                           # Express app configuration
-│   ├── server.js                        # Server entry point
-│   ├── eng.traineddata                  # Legacy Tesseract data (Deprecated)
-│   └── .env                             # Backend environment variables
-│
-└── frontend/                            # React + Vite Frontend
-    ├── public/
-    ├── src/
-    │   ├── assets/                      # Static images and icons
-    │   ├── components/
-    │   │   └── ProtectedRoute.jsx       # Auth wrapper for routes
-    │   ├── context/
-    │   │   └── AuthContext.jsx          # Global user authentication state
-    │   ├── lib/
-    │   │   └── supabase.js              # Supabase frontend client
-    │   ├── pages/                       # React Route Components
-    │   │   ├── AssignmentView.jsx       # Teacher assignment details
-    │   │   ├── Auth.jsx                 # Login / Registration
-    │   │   ├── CreateAssignment.jsx     # Teacher exam creation
-    │   │   ├── GenerateQuestionsView.jsx# AI Question generator
-    │   │   ├── Home.jsx                 # Landing page
-    │   │   ├── ResultsView.jsx          # Student exam analytics
-    │   │   ├── StudentDashboard.jsx     # Student portal
-    │   │   ├── SubmissionReview.jsx     # Teacher split-screen grader
-    │   │   ├── TakeTest.jsx             # Student exam interface
-    │   │   └── TeacherDashboard.jsx     # Teacher portal
-    │   ├── App.jsx                      # Main router setup
-    │   ├── main.jsx                     # React DOM rendering
-    │   ├── App.css                      # Component-specific styles
-    │   └── index.css                    # Tailwind CSS configuration
-    ├── index.html
-    ├── eslint.config.js                 # Linter rules
-    └── .env                             # Frontend environment variables
+│   │   │   ├── upload.routes.js
+│   │   │   └── user.routes.js
+│   │   ├── services/
+│   │   │   ├── ai.evaluator.js
+│   │   │   ├── auth.service.js
+│   │   │   ├── embedding.service.js
+│   │   │   ├── mail.service.js
+│   │   │   ├── mail.templates.js
+│   │   │   ├── mcq.evaluator.js
+│   │   │   ├── plagiarism.service.js
+│   │   │   ├── rag.service.js
+│   │   │   └── storage.service.js
+│   │   └── utils/
+│   │       └── keyManager.js
+│   ├── .env
+│   ├── .gitignore
+│   ├── app.js
+│   ├── eng.traineddata
+│   ├── package-lock.json
+│   ├── package.json
+│   └── server.js
+├── frontend/
+│   ├── node_modules/
+│   ├── public/
+│   │   ├── favicon.jpeg
+│   │   ├── favicon.svg
+│   │   ├── icons.svg
+│   │   └── logo.jpeg
+│   ├── src/
+│   │   ├── assets/
+│   │   │   ├── favicon.jpeg
+│   │   │   ├── logo.jpeg
+│   │   │   ├── react.svg
+│   │   │   └── vite.svg
+│   │   ├── components/
+│   │   │   ├── Pricing.jsx
+│   │   │   └── ProtectedRoute.jsx
+│   │   ├── context/
+│   │   │   └── AuthContext.jsx
+│   │   ├── lib/
+│   │   │   └── supabase.js
+│   │   ├── pages/
+│   │   │   ├── AssignmentView.jsx
+│   │   │   ├── Auth.jsx
+│   │   │   ├── CreateAssignment.jsx
+│   │   │   ├── GenerateQuestionsView.jsx
+│   │   │   ├── Home.jsx
+│   │   │   ├── Profile.jsx
+│   │   │   ├── ResultsView.jsx
+│   │   │   ├── StudentDashboard.jsx
+│   │   │   ├── SubmissionReview.jsx
+│   │   │   ├── TakeTest.jsx
+│   │   │   └── TeacherDashboard.jsx
+│   │   ├── App.css
+│   │   ├── App.jsx
+│   │   ├── index.css
+│   │   └── main.jsx
+│   ├── .env
+│   ├── .gitignore
+│   ├── eslint.config.js
+│   ├── index.html
+│   ├── package-lock.json
+│   ├── README.md
+│   ├── vercel.json
+│   └── vite.config.js
+└── readme.md
 ```
 
 ---
 
-<a id="future-industry-roadmap"></a>
-## 🔮 Future Industry Roadmap: Scaling to Competitive Exams
+## Future Roadmap
 
-While Evaluator.ai is currently optimized for university and K-12 academic grading, our core multimodal architecture is built to scale into India's multi-billion dollar competitive coaching industry. 
+The core multimodal architecture is built to scale into India's competitive coaching industry:
 
-Our upcoming development phases will introduce specialized AI pipelines for the country's most high-stakes examinations:
-
-### 🎯 UPSC (Civil Services Examination)
-* **Long-Form Essay Evaluation:** Fine-tuning the LLM to grade 250-word mains answers against complex UPSC rubrics (evaluating analytical depth, ethical reasoning, and multidimensional perspectives).
-* **Multi-Page Handwriting Stitching:** Advanced vision agents capable of reading 20-page continuous essay booklets with high accuracy.
-* **Current Affairs Integration:** RAG (Retrieval-Augmented Generation) pipelines to ensure the AI evaluates answers against the most up-to-date socio-economic and political data.
-
-### 📐 JEE (Joint Entrance Examination)
-* **Step-by-Step Derivation Tracking:** Moving beyond final-answer checking to evaluate the *methodology* of complex Physics and Calculus problems. 
-* **Spatial & Diagram Reasoning:** Allowing the AI to grade student-drawn circuit diagrams, free-body diagrams, and organic chemistry mechanisms.
-* **Partial Marking Logic:** Implementing strict, customizable partial marking schemes based on standard JEE Advanced guidelines.
-
-### 🧬 NEET (National Eligibility cum Entrance Test)
-* **High-Volume OMR + Descriptive Hybrid:** Combining ultra-fast Optical Mark Recognition for standard MCQs with our Vision LLM for newly introduced theoretical or descriptive formats.
-* **Syllabus-Aligned Question Generation:** Upgrading the `generatorAgent` to specifically pull from NCERT textbooks, ensuring AI-generated mock tests are perfectly aligned with NTA (National Testing Agency) standards.
-
-### 🏢 B2B Coaching Center Solutions
-* **Multi-Tenant Architecture:** Allowing massive coaching institutes (e.g., Kota-based centers) to manage 10,000+ students, segmenting analytics by branch, batch, and individual performance.
-* **Same-Day Mock Test Results:** Reducing the grading turnaround time from 4 days to 4 hours, giving students actionable feedback before their next class.
+| Target | Plan |
+|---|---|
+| **UPSC** | Fine-tune LLM to grade 250-word mains answers against complex rubrics and current affairs via dynamic RAG |
+| **JEE / NEET** | Expand the Vision Agent to grade circuit diagrams, free-body diagrams, and organic chemistry mechanisms with partial marking |
+| **B2B Multi-Tenant** | Allow large coaching institutes to manage 10,000+ students with same-day mock test results |
 
 ---
 
-**Made with 💡 and ☕ by the EVALIX AI Team**
+## Contributing
 
-<a id="contributing"></a>
-## 🤝 Contributing
+```bash
+# 1. Create a feature branch
+git checkout -b feature/your-feature-name
 
-1. Create a feature branch: `git checkout -b feature/your-feature-name`
-2. Ensure Prisma schema changes are migrated: `npx prisma migrate dev`
-3. Commit your changes: `git commit -m "feat: added new evaluator logic"`
-4. Push to the branch: `git push origin feature/your-feature-name`
-5. Open a Pull Request.
+# 2. Apply any Prisma schema changes
+npx prisma db push
+
+# 3. Commit your changes
+git commit -m "feat: added new evaluator logic"
+
+# 4. Push and open a Pull Request
+git push origin feature/your-feature-name
+```
+
+---
+
+Made with 💡 and ☕ by the EVALIX AI Team

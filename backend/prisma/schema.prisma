@@ -9,12 +9,12 @@ datasource db {
 }
 
 // -----------------------------------------------------------------------------
-// ENUMS (Strict Type Safety)
+// ENUMS
 // -----------------------------------------------------------------------------
 
 enum Role {
   STUDENT
-  TEACHER 
+  TEACHER
 }
 
 enum AssignmentType {
@@ -30,11 +30,19 @@ enum AnswerStatus {
 
 enum SubmissionStatus {
   PENDING
+  PROCESSING // 🌟 NEW: Added for async background evaluation
   GRADED
   FAILED
 }
 
-// 1. Define the Enums
+// 🌟 NEW: For the RAG Vector Database
+enum MaterialType {
+  RUBRIC
+  REFERENCE_ANSWER
+  TEACHER_NOTES
+  SYLLABUS
+}
+
 enum Department {
   COMPUTER_SCIENCE_ENGINEERING
   ELECTRONICS_AND_COMMUNICATION_ENGINEERING
@@ -82,22 +90,21 @@ enum Batch {
 // -----------------------------------------------------------------------------
 
 model User {
-  // Uses the exact Supabase Auth UUID
-  id             String         @id @db.Uuid
-  email          String         @unique
-  name           String
-  role           Role           @default(STUDENT)
+  id                  String        @id @db.Uuid 
+  email               String        @unique
+  name                String
+  role                Role          @default(STUDENT)
   
-  // Strict B2B Data (Notice year/batch are excluded to keep auth fluid!)
-  department     Department?      
-  
-  created_at     DateTime       @default(now())
-  
-  // Relations
-  assignments    Assignment[]   @relation("TeacherAssignments")
-  submissions    Submission[]
-  
-  // (Removed ReferenceAnswers relation)
+  department          Department?
+  year                AcademicYear?
+  batch               Batch?
+  university_roll     String?       @unique 
+  registration_number String?       @unique 
+
+  created_at          DateTime      @default(now())
+
+  assignments         Assignment[]  @relation("TeacherAssignments")
+  submissions         Submission[]
 
   @@map("users")
 }
@@ -108,68 +115,68 @@ model Assignment {
   title            String
   type             AssignmentType
   
-  // Strict B2B Hierarchy using Enums
   department       Department
+  subject          String
   year             AcademicYear         
   batch            Batch
-  subject          String
-  
-  // Time-Lock Features
-  start_time       DateTime       // When students can start uploading/answering
-  end_time         DateTime       // Deadline for submissions
-  release_marks_at DateTime       // When the Student Dashboard unlocks the results
+
+  start_time       DateTime       
+  end_time         DateTime       
+  release_marks_at DateTime       
   
   created_at       DateTime       @default(now())
 
-  // Relations
-  teacher          User           @relation("TeacherAssignments", fields: [teacher_id], references: [id])
+  teacher          User                 @relation("TeacherAssignments", fields: [teacher_id], references: [id])
   questions        Question[]
   submissions      Submission[]
+  materials        AssignmentMaterial[] // 🌟 NEW: RAG Materials link here
 
   @@map("assignments")
 }
 
 model Question {
-  id               String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  assignment_id    String   @db.Uuid
-  question_text    String   @db.Text
-  image_url        String?  // 🌟 NEW: The optional image/diagram the teacher uploads
-  max_marks        Float
+  id              String     @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  assignment_id   String     @db.Uuid
+  question_text   String     @db.Text
+  image_url       String?    
+  max_marks       Float
   
-  // 🌟 NEW: For Descriptive Assignments (Replaces rubric_json and ReferenceAnswer table)
-  model_answer     String?  @db.Text 
+  model_answer    String?    @db.Text 
   
-  // For MCQ Assignments
-  mcq_options      Json?    // Array of strings, e.g., ["A", "B", "C", "D"]
-  mcq_answer       String?  // The correct option
-  mcq_explanation  String?  @db.Text 
+  mcq_options     Json?      
+  mcq_answer      String?    
+  mcq_explanation String?    @db.Text 
 
-  // Relations
-  assignment       Assignment @relation(fields: [assignment_id], references: [id], onDelete: Cascade)
-  answers          Answer[]
-  
-  // (Removed ReferenceAnswers relation)
+  assignment      Assignment @relation(fields: [assignment_id], references: [id], onDelete: Cascade)
+  answers         Answer[]
 
   @@map("questions")
 }
 
 model Submission {
-  id            String           @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  assignment_id String           @db.Uuid
-  student_id    String           @db.Uuid
+  id               String           @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  assignment_id    String           @db.Uuid
+  student_id       String           @db.Uuid
   
-  // Scoring
-  total_score   Float?           // Nullable because Descriptive tests take time to grade!
-  status        SubmissionStatus @default(PENDING) // Strictly typed status
+  total_score      Float?           
+  status           SubmissionStatus @default(PENDING)
+  submitted_at     DateTime         @default(now())
+
+  // 🌟 NEW: Advanced Evaluation Flags
+  plagiarism_score Float?
+  confidence_score Float?
+  requires_review  Boolean          @default(false)
+
+  assignment       Assignment         @relation(fields: [assignment_id], references: [id])
+  student          User               @relation(fields: [student_id], references: [id])
+  answers          Answer[]         
   
-  submitted_at  DateTime         @default(now())
+  // 🌟 NEW: Workflow Relations
+  plagiarism_reports PlagiarismReport[] @relation("SubmissionPlagiarism")
+  matched_reports    PlagiarismReport[] @relation("MatchedPlagiarism")
+  teacher_review     TeacherReview?
 
-  // Relations
-  assignment    Assignment       @relation(fields: [assignment_id], references: [id])
-  student       User             @relation(fields: [student_id], references: [id])
-  answers       Answer[]         // Properly linked to the Answer table
-
-  @@unique([assignment_id, student_id]) // A student can only submit once!
+  @@unique([assignment_id, student_id])
   @@map("submissions")
 }
 
@@ -178,25 +185,80 @@ model Answer {
   submission_id    String       @db.Uuid
   question_id      String       @db.Uuid
   
-  // -- For Descriptive Exams --
-  file_url         String?      // Nullable because MCQs don't have file uploads
+  // OCR & Image Details
+  file_urls        String[]      
   ocr_text         String?      @db.Text
+  embedding        Unsupported("vector(768)")?
+  ocr_confidence   Float?       // 🌟 NEW: How sure is the AI about the handwriting?
+
+  // Evaluation Details
+  ai_feedback      String?      @db.Text 
+  teacher_feedback String?      @db.Text 
+  strengths        Json?        // 🌟 NEW: Structured feedback
+  weaknesses       Json?        // 🌟 NEW: Structured feedback
+  missing_concepts Json?        // 🌟 NEW: Structured feedback
+  eval_confidence  Float?       // 🌟 NEW: How sure is the AI about the grade?
+  flagged          Boolean      @default(false) // 🌟 NEW: Flag individual weird answers
   
-  // 🌟 Replaced feedback_json with two distinct text fields
-  ai_feedback      String?      @db.Text // The paragraph the AI writes
-  teacher_feedback String?      @db.Text // The note the teacher leaves during an override
-  
-  // -- For MCQ Exams --
-  mcq_selected     String?      // The option the student clicked
-  
-  // -- Scoring & Status --
+  mcq_selected     String?      
   score            Float?
   status           AnswerStatus @default(PENDING)
 
-  // Relations
   submission       Submission   @relation(fields: [submission_id], references: [id], onDelete: Cascade)
   question         Question     @relation(fields: [question_id], references: [id], onDelete: Cascade)
 
   @@unique([submission_id, question_id])
   @@map("answers")
+}
+
+// -----------------------------------------------------------------------------
+// 🌟 NEW RAG & PIPELINE MODELS
+// -----------------------------------------------------------------------------
+
+model AssignmentMaterial {
+  id              String       @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  assignment_id   String       @db.Uuid
+  type            MaterialType
+  content         String       @db.Text
+  
+  // Requires pgvector extension in Supabase!
+  embedding       Unsupported("vector(768)")? 
+
+  created_at      DateTime     @default(now())
+
+  assignment      Assignment   @relation(fields: [assignment_id], references: [id], onDelete: Cascade)
+
+  @@map("assignment_materials")
+}
+
+model PlagiarismReport {
+  id                    String     @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  submission_id         String     @db.Uuid
+  matched_submission_id String     @db.Uuid
+  
+  similarity_score      Float
+  status                String
+
+  created_at            DateTime   @default(now())
+
+  submission            Submission @relation("SubmissionPlagiarism", fields: [submission_id], references: [id], onDelete: Cascade)
+  matched_submission    Submission @relation("MatchedPlagiarism", fields: [matched_submission_id], references: [id], onDelete: Cascade)
+
+  @@map("plagiarism_reports")
+}
+
+model TeacherReview {
+  id                  String     @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  submission_id       String     @unique @db.Uuid
+  
+  ai_score            Float
+  teacher_score       Float
+  teacher_feedback    String     @db.Text
+  final_score         Float
+
+  created_at          DateTime   @default(now())
+
+  submission          Submission @relation(fields: [submission_id], references: [id], onDelete: Cascade)
+
+  @@map("teacher_reviews")
 }

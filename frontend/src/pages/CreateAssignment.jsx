@@ -5,7 +5,7 @@ import { supabase } from '../lib/supabase';
 import {
   ArrowLeft, Plus, Trash2, Save, Loader2,
   AlignLeft, CheckSquare, Settings2, Target, Clock, BookOpen,
-  Image as ImageIcon, CheckCircle2, BrainCircuit, ChevronDown
+  Image as ImageIcon, CheckCircle2, BrainCircuit, Sparkles
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
@@ -45,327 +45,8 @@ const BATCHES = Array.from({ length: 10 }, (_, i) => ({
 const generateId = () => Math.random().toString(36).substr(2, 9);
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
 
-/* ─── Styles ─── */
-const injectStyles = () => {
-  if (document.getElementById('ca-styles')) return;
-  const s = document.createElement('style');
-  s.id = 'ca-styles';
-  s.textContent = `
-    @import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500;600&display=swap');
-
-    :root {
-      --brand:     #D85A30;
-      --brand-dim: #993C1D;
-      --brand-glow:rgba(216,90,48,.18);
-      --brand-g2:  rgba(216,90,48,.06);
-      --bg-base:   #131210;
-      --bg-panel:  #1A1917;
-      --bg-card:   #201F1D;
-      --bg-hover:  #272523;
-      --border:    #2E2D2A;
-      --border-hi: #403E3A;
-      --txt-1:     #F5F3EE;
-      --txt-2:     #C8C5BC;
-      --txt-3:     #7A7870;
-      --r-lg:      14px;
-      --r-md:      10px;
-      --r-sm:      7px;
-      --tx:        220ms cubic-bezier(.4,0,.2,1);
-    }
-    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-    body{font-family:'DM Sans',sans-serif;background:var(--bg-base);color:var(--txt-1);-webkit-font-smoothing:antialiased}
-    ::-webkit-scrollbar{width:4px;height:4px}
-    ::-webkit-scrollbar-track{background:transparent}
-    ::-webkit-scrollbar-thumb{background:var(--border-hi);border-radius:99px}
-
-    /* ── Header ── */
-    .ca-header{
-      position:sticky;top:0;z-index:30;
-      background:var(--bg-panel);
-      border-bottom:1px solid var(--border);
-      height:64px;
-      display:flex;align-items:center;justify-content:space-between;
-      padding:0 28px;
-    }
-    .ca-header-left{display:flex;align-items:center;gap:14px}
-    .ca-brand{display:flex;align-items:center;gap:10px}
-    .ca-brand-ring{
-      width:34px;height:34px;border-radius:50%;
-      border:2px solid var(--brand);
-      background:var(--brand-g2);
-      display:flex;align-items:center;justify-content:center;
-      box-shadow:0 0 10px var(--brand-glow);
-      flex-shrink:0;
-    }
-    .ca-brand-name{
-      font-family:'Syne',sans-serif;font-weight:800;
-      font-size:15px;letter-spacing:.06em;color:#fff;
-    }
-    .ca-brand-name span{color:var(--brand)}
-    .back-btn{
-      display:flex;align-items:center;justify-content:center;
-      width:36px;height:36px;border-radius:var(--r-sm);
-      border:1px solid var(--border);
-      background:transparent;color:var(--txt-2);
-      cursor:pointer;transition:all var(--tx);
-    }
-    .back-btn:hover{color:#fff;border-color:var(--border-hi);background:var(--bg-hover)}
-    .page-title{
-      font-family:'Syne',sans-serif;font-size:18px;
-      font-weight:700;color:#fff;letter-spacing:-.01em;
-    }
-    .divider-dot{color:var(--border-hi);font-size:18px;margin:0 2px}
-
-    /* Publish btn */
-    .publish-btn{
-      display:flex;align-items:center;gap:8px;
-      padding:9px 22px;border-radius:var(--r-sm);
-      background:var(--brand);border:none;
-      color:#fff;font-size:13.5px;font-weight:600;
-      font-family:'DM Sans',sans-serif;
-      cursor:pointer;transition:background var(--tx),opacity var(--tx);
-      box-shadow:0 4px 18px -4px var(--brand-glow);
-    }
-    .publish-btn:hover{background:var(--brand-dim)}
-    .publish-btn:disabled{opacity:.45;cursor:not-allowed}
-
-    /* ── Layout ── */
-    .ca-wrap{
-      max-width:1520px;width:100%;margin:0 auto;
-      padding:28px 28px 100px;
-      display:grid;
-      grid-template-columns:300px 1fr;
-      gap:24px;
-      align-items:start;
-    }
-
-    /* ── Aside (sticky settings) ── */
-    .ca-aside{
-      position:sticky;top:80px;
-      display:flex;flex-direction:column;gap:18px;
-    }
-
-    /* ── Cards ── */
-    .ca-card{
-      background:var(--bg-card);
-      border:1px solid var(--border);
-      border-radius:var(--r-lg);
-      overflow:hidden;
-    }
-    .ca-card-head{
-      display:flex;align-items:center;gap:8px;
-      padding:13px 18px;
-      border-bottom:1px solid var(--border);
-      background:var(--bg-panel);
-    }
-    .ca-card-title{
-      font-family:'Syne',sans-serif;
-      font-size:11.5px;font-weight:700;
-      color:var(--txt-2);letter-spacing:.12em;text-transform:uppercase;
-    }
-    .ca-card-body{padding:18px;display:flex;flex-direction:column;gap:14px}
-
-    /* ── Form elements ── */
-    .field-label{
-      display:block;font-size:11px;font-weight:600;
-      color:var(--txt-3);letter-spacing:.1em;
-      text-transform:uppercase;margin-bottom:6px;
-    }
-    .ca-input,.ca-select,.ca-textarea{
-      width:100%;padding:9px 14px;
-      background:var(--bg-panel);
-      border:1px solid var(--border-hi);
-      border-radius:var(--r-sm);
-      color:#fff;font-size:13.5px;
-      font-family:'DM Sans',sans-serif;
-      outline:none;
-      transition:border-color var(--tx),background var(--tx);
-    }
-    .ca-input::placeholder,.ca-textarea::placeholder{color:var(--txt-3)}
-    .ca-input:focus,.ca-select:focus,.ca-textarea:focus{border-color:var(--brand);background:var(--bg-hover)}
-    .ca-select{
-      appearance:none;
-      background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%237A7870' stroke-width='2.5'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
-      background-repeat:no-repeat;
-      background-position:right 12px center;
-      padding-right:32px;
-      cursor:pointer;
-    }
-    .ca-select option{background:var(--bg-card);color:#fff}
-    .ca-textarea{resize:vertical;line-height:1.6}
-    .grid-2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
-
-    /* ── Type selector ── */
-    .type-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:6px}
-    .type-card{
-      padding:20px;border-radius:var(--r-lg);
-      border:1px solid var(--border);
-      background:var(--bg-card);
-      text-align:left;cursor:pointer;
-      transition:all var(--tx);
-      display:flex;flex-direction:column;gap:8px;
-    }
-    .type-card:hover{border-color:var(--border-hi);background:var(--bg-hover)}
-    .type-card.active{
-      border-color:var(--brand);
-      background:rgba(216,90,48,.08);
-      box-shadow:0 0 0 1px var(--brand);
-    }
-    .type-card-icon{
-      width:38px;height:38px;border-radius:9px;
-      display:flex;align-items:center;justify-content:center;
-      background:var(--bg-panel);border:1px solid var(--border);
-      color:var(--txt-3);
-      transition:all var(--tx);
-    }
-    .type-card.active .type-card-icon{
-      background:var(--brand-g2);border-color:rgba(216,90,48,.4);
-      color:var(--brand);
-    }
-    .type-card h3{font-family:'Syne',sans-serif;font-size:14px;font-weight:700;color:#fff}
-    .type-card p{font-size:12px;color:var(--txt-3);line-height:1.5}
-
-    /* ── Section header ── */
-    .section-head{
-      display:flex;align-items:center;justify-content:space-between;
-      padding-bottom:14px;
-      border-bottom:1px solid var(--border);
-      margin-bottom:4px;
-    }
-    .section-title{
-      font-family:'Syne',sans-serif;font-size:16px;font-weight:700;
-      color:#fff;display:flex;align-items:center;gap:8px;
-    }
-    .q-count{
-      font-size:12px;font-weight:600;color:var(--txt-3);
-      background:var(--bg-card);
-      border:1px solid var(--border);
-      padding:4px 12px;border-radius:99px;
-    }
-
-    /* ── Question card ── */
-    .q-card{
-      background:var(--bg-card);
-      border:1px solid var(--border);
-      border-radius:var(--r-lg);
-      padding:22px;
-      position:relative;
-      transition:border-color var(--tx);
-    }
-    .q-card:hover{border-color:var(--border-hi)}
-    .q-card-top{
-      display:flex;align-items:center;justify-content:space-between;
-      margin-bottom:18px;
-    }
-    .q-num{
-      width:30px;height:30px;border-radius:8px;
-      background:var(--bg-panel);border:1px solid var(--border-hi);
-      display:flex;align-items:center;justify-content:center;
-      font-family:'Syne',sans-serif;font-size:13px;font-weight:700;color:var(--brand);
-    }
-    .q-del-btn{
-      display:flex;align-items:center;justify-content:center;
-      width:32px;height:32px;border-radius:8px;
-      background:transparent;border:1px solid transparent;
-      color:var(--txt-3);cursor:pointer;
-      transition:all var(--tx);
-    }
-    .q-del-btn:hover{color:#ff6b6b;border-color:rgba(255,107,107,.3);background:rgba(255,107,107,.07)}
-
-    /* Q fields grid */
-    .q-fields{display:grid;grid-template-columns:1fr 180px 90px;gap:12px;margin-bottom:14px;align-items:end}
-    .img-upload-label{
-      display:flex;align-items:center;justify-content:center;gap:7px;
-      height:40px;
-      background:var(--bg-panel);
-      border:1.5px dashed var(--border-hi);
-      border-radius:var(--r-sm);
-      font-size:12.5px;color:var(--txt-3);cursor:pointer;
-      transition:all var(--tx);
-    }
-    .img-upload-label:hover{border-color:var(--brand);color:var(--brand)}
-    .img-upload-label.has-file{border-style:solid;border-color:rgba(216,90,48,.5);color:var(--brand)}
-
-    /* MCQ options panel */
-    .mcq-panel{
-      background:var(--bg-panel);
-      border:1px solid var(--border);
-      border-radius:var(--r-md);
-      padding:16px;
-      margin-top:4px;
-    }
-    .options-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px}
-    .option-wrap{position:relative}
-    .option-letter{
-      position:absolute;left:10px;top:50%;transform:translateY(-50%);
-      width:22px;height:22px;border-radius:5px;
-      background:var(--bg-card);border:1px solid var(--border-hi);
-      display:flex;align-items:center;justify-content:center;
-      font-family:'Syne',sans-serif;font-size:11px;font-weight:700;
-      color:var(--txt-3);pointer-events:none;
-    }
-    .option-input{padding-left:40px!important}
-    .mcq-footer{
-      display:grid;grid-template-columns:160px 1fr;gap:12px;
-      padding-top:14px;border-top:1px solid var(--border);
-    }
-
-    /* Descriptive model answer */
-    .model-panel{
-      background:var(--bg-panel);
-      border:1px solid var(--border);
-      border-radius:var(--r-md);
-      padding:16px;
-      margin-top:4px;
-    }
-    .model-label{
-      display:flex;align-items:center;gap:6px;
-      font-size:11px;font-weight:700;
-      color:var(--txt-3);letter-spacing:.1em;text-transform:uppercase;
-      margin-bottom:8px;
-    }
-    .model-label svg{color:rgba(52,211,153,1)}
-
-    /* Add question btn */
-    .add-q-btn{
-      width:100%;padding:18px;
-      border:2px dashed var(--border-hi);
-      border-radius:var(--r-lg);
-      background:transparent;
-      color:var(--txt-3);font-size:14px;font-weight:600;
-      font-family:'DM Sans',sans-serif;
-      display:flex;align-items:center;justify-content:center;gap:8px;
-      cursor:pointer;transition:all var(--tx);
-    }
-    .add-q-btn:hover{
-      border-color:var(--brand);color:var(--brand);
-      background:var(--brand-g2);
-    }
-
-    /* ── Responsive ── */
-    @media(max-width:1024px){
-      .ca-wrap{grid-template-columns:1fr;padding:20px 18px 100px}
-      .ca-aside{position:static}
-    }
-    @media(max-width:640px){
-      .ca-header{padding:0 16px;height:58px}
-      .ca-wrap{padding:16px 14px 100px}
-      .type-grid{grid-template-columns:1fr}
-      .q-fields{grid-template-columns:1fr 90px;gap:10px}
-      .q-fields>:nth-child(2){grid-column:1/-1}
-      .options-grid{grid-template-columns:1fr}
-      .mcq-footer{grid-template-columns:1fr}
-      .ca-brand-name{font-size:13px}
-      .page-title{font-size:15px}
-      .grid-2{grid-template-columns:1fr}
-    }
-  `;
-  document.head.appendChild(s);
-};
-
 /* ─── Component ─── */
 const CreateAssignment = () => {
-  injectStyles();
   const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(false);
 
@@ -378,6 +59,9 @@ const CreateAssignment = () => {
   const [endTime, setEndTime]               = useState('');
   const [releaseMarksAt, setReleaseMarksAt] = useState('');
   const [type, setType]                     = useState('MCQ');
+  
+  // New field required by backend for RAG evaluation
+  const [syllabusText, setSyllabusText]     = useState('');
 
   const getEmptyQuestion = (t) =>
     t === 'MCQ'
@@ -413,6 +97,9 @@ const CreateAssignment = () => {
     e.preventDefault();
     if (!title || !subject || !startTime || !endTime || !releaseMarksAt)
       return toast.error('Fill in all required metadata and time locks.');
+    if (type === 'DESCRIPTIVE' && !syllabusText)
+      return toast.error('Syllabus context is required for AI Descriptive Grading.');
+
     setIsLoading(true);
     try {
       const { data: { session }, error: se } = await supabase.auth.getSession();
@@ -428,22 +115,43 @@ const CreateAssignment = () => {
           if (!up.ok) throw new Error('Failed to upload image for a question.');
           uploadedUrl = (await up.json()).fileUrl;
         }
-        const base = { question_text: q.text, max_marks: Number(q.marks), ...(uploadedUrl && { image_url: uploadedUrl }) };
+        
+        // Match exact JSON keys requested in blueprint
+        const base = { 
+          question_text: q.text, 
+          max_marks: Number(q.marks), 
+          ...(uploadedUrl && { image_url: uploadedUrl }) 
+        };
+        
         if (type === 'MCQ') return {
           ...base,
           mcq_options: q.options.map((o, i) => `${String.fromCharCode(65+i)}. ${o}`),
           mcq_answer: `${String.fromCharCode(65+q.correctOptionIndex)}. ${q.options[q.correctOptionIndex]}`,
           mcq_explanation: q.explanation,
         };
+        
         return { ...base, model_answer: q.model_answer };
       }));
 
       const res = await fetch(`${API_URL}/api/assignments`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session.access_token}` },
-        body: JSON.stringify({ title, type, subject, start_time: new Date(startTime).toISOString(), end_time: new Date(endTime).toISOString(), release_marks_at: new Date(releaseMarksAt).toISOString(), department, year, batch, questions: finalQuestions }),
+        body: JSON.stringify({ 
+          title, type, subject, 
+          start_time: new Date(startTime).toISOString(), 
+          end_time: new Date(endTime).toISOString(), 
+          release_marks_at: new Date(releaseMarksAt).toISOString(), 
+          department, year, batch, 
+          syllabus_text: syllabusText, // Added RAG Context
+          questions: finalQuestions 
+        }),
       });
-      if (!res.ok) { const d = await res.json().catch(()=>({})); throw new Error(d.message || 'Failed to create assignment'); }
+      
+      if (!res.ok) { 
+        const d = await res.json().catch(()=>({})); 
+        throw new Error(d.message || 'Failed to create assignment'); 
+      }
+      
       toast.success('Assignment published successfully!');
       navigate('/teacher-dashboard');
     } catch (err) {
@@ -451,232 +159,309 @@ const CreateAssignment = () => {
     } finally { setIsLoading(false); }
   };
 
-  return (
-    <div style={{ minHeight: '100vh', background: 'var(--bg-base)', color: 'var(--txt-1)', fontFamily: "'DM Sans', sans-serif" }}>
+  // Base select input styling for reuse
+  const selectClass = "w-full px-3 py-[10px] bg-bg-primary border border-border-strong rounded-[8px] text-[13px] text-white focus:outline-none focus:border-brand-400 focus:bg-bg-hover transition-all cursor-pointer appearance-none";
+  const selectBg = { backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%23C8C5BC' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 12px center' };
 
-      {/* Header */}
-      <header className="ca-header">
-        <div className="ca-header-left">
-          <div className="ca-brand">
-            <div className="ca-brand-ring"><BrainCircuit size={16} color="var(--brand)" /></div>
-            <span className="ca-brand-name">EVALIX <span>AI</span></span>
-          </div>
-          <span className="divider-dot">·</span>
-          <span className="page-title">Create Assignment</span>
-        </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <button className="back-btn" onClick={() => navigate(-1)} title="Go back">
+  return (
+    <div className="h-screen bg-bg-base text-text-primary font-sans flex flex-col overflow-hidden selection:bg-brand-400/30 selection:text-white">
+
+      {/* ── Header (App-like & Fixed) ── */}
+      <header className="shrink-0 bg-bg-primary/90 backdrop-blur-lg border-b border-border-strong h-[64px] flex items-center justify-between px-6 lg:px-8 z-30">
+        <div className="flex items-center gap-4">
+          <button 
+            className="w-9 h-9 rounded-[8px] bg-bg-secondary border border-border-strong flex items-center justify-center text-text-secondary hover:text-white hover:border-brand-400 transition-colors" 
+            onClick={() => navigate(-1)} 
+            title="Go back"
+          >
             <ArrowLeft size={16} />
           </button>
-          <button className="publish-btn" onClick={handleSubmit} disabled={isLoading}>
-            {isLoading ? <Loader2 size={15} style={{ animation: 'spin 1s linear infinite' }} /> : <Save size={15} />}
-            Publish Test
-          </button>
+          <div className="flex items-center gap-3 border-l border-border-strong pl-4 ml-1">
+            <div className="hidden sm:flex w-8 h-8 rounded-full border border-brand-400 bg-brand-400/10 items-center justify-center shrink-0">
+              <BrainCircuit size={14} className="text-brand-400" />
+            </div>
+            <h1 className="font-display text-[17px] font-bold text-white tracking-wide">
+              Create Assignment
+            </h1>
+          </div>
         </div>
-        <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
+        
+        <button 
+          className="flex items-center gap-2 px-6 py-[10px] bg-brand-400 text-white font-bold rounded-[8px] font-display shadow-brand hover:-translate-y-[1px] hover:bg-brand-600 transition-all text-[13.5px] disabled:opacity-60 disabled:hover:translate-y-0" 
+          onClick={handleSubmit} 
+          disabled={isLoading}
+        >
+          {isLoading ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
+          Publish Test
+        </button>
       </header>
 
-      {/* Body */}
-      <div className="ca-wrap">
+      {/* ── Scrollable Body ── */}
+      <main className="flex-1 overflow-y-auto w-full pb-20 custom-scrollbar">
+        <div className="max-w-[1520px] mx-auto p-6 lg:p-8">
+          
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+            
+            {/* ── LEFT ASIDE (Metadata) ── */}
+            <aside className="lg:col-span-4 flex flex-col gap-6">
 
-        {/* ── LEFT ASIDE ── */}
-        <aside className="ca-aside">
-
-          {/* General Details */}
-          <div className="ca-card">
-            <div className="ca-card-head">
-              <BookOpen size={14} color="var(--brand)" />
-              <span className="ca-card-title">General Details</span>
-            </div>
-            <div className="ca-card-body">
-              <div>
-                <label className="field-label">Title *</label>
-                <input className="ca-input" type="text" placeholder="e.g. Midterm Examination" value={title} onChange={e => setTitle(e.target.value)} />
-              </div>
-              <div>
-                <label className="field-label">Subject *</label>
-                <input className="ca-input" type="text" placeholder="e.g. Core Computer Science" value={subject} onChange={e => setSubject(e.target.value)} />
-              </div>
-            </div>
-          </div>
-
-          {/* Target Audience */}
-          <div className="ca-card">
-            <div className="ca-card-head">
-              <Target size={14} color="#2dd4bf" />
-              <span className="ca-card-title">Target Audience</span>
-            </div>
-            <div className="ca-card-body">
-              <div>
-                <label className="field-label">Department</label>
-                <select className="ca-select" value={department} onChange={e => setDepartment(e.target.value)}>
-                  {DEPARTMENTS.map(d => <option key={d.value} value={d.value}>{d.label}</option>)}
-                </select>
-              </div>
-              <div className="grid-2">
-                <div>
-                  <label className="field-label">Year</label>
-                  <select className="ca-select" value={year} onChange={e => setYear(e.target.value)}>
-                    {ACADEMIC_YEARS.map(y => <option key={y.value} value={y.value}>{y.label}</option>)}
-                  </select>
+              {/* General Details */}
+              <div className="bg-bg-secondary border border-border-strong rounded-[14px] overflow-hidden shadow-sm">
+                <div className="px-5 py-[14px] border-b border-border-strong bg-bg-primary flex items-center gap-2.5">
+                  <BookOpen size={15} className="text-brand-400" />
+                  <h2 className="font-display font-bold text-[14.5px] text-white tracking-wide">General Details</h2>
                 </div>
-                <div>
-                  <label className="field-label">Batch</label>
-                  <select className="ca-select" value={batch} onChange={e => setBatch(e.target.value)}>
-                    {BATCHES.map(b => <option key={b.value} value={b.value}>{b.label}</option>)}
-                  </select>
+                <div className="p-5 flex flex-col gap-4">
+                  <div>
+                    <label className="block text-[10.5px] font-bold text-text-dim uppercase tracking-[0.1em] mb-1.5 font-display">Title *</label>
+                    <input className="w-full px-3 py-[10px] bg-bg-primary border border-border-strong rounded-[8px] text-[13px] text-white focus:outline-none focus:border-brand-400 focus:bg-bg-hover transition-all placeholder:text-text-muted" type="text" placeholder="e.g. Midterm Examination" value={title} onChange={e => setTitle(e.target.value)} />
+                  </div>
+                  <div>
+                    <label className="block text-[10.5px] font-bold text-text-dim uppercase tracking-[0.1em] mb-1.5 font-display">Subject Code/Name *</label>
+                    <input className="w-full px-3 py-[10px] bg-bg-primary border border-border-strong rounded-[8px] text-[13px] text-white focus:outline-none focus:border-brand-400 focus:bg-bg-hover transition-all placeholder:text-text-muted" type="text" placeholder="e.g. CS201 Data Structures" value={subject} onChange={e => setSubject(e.target.value)} />
+                  </div>
                 </div>
               </div>
-            </div>
-          </div>
 
-          {/* Schedule */}
-          <div className="ca-card">
-            <div className="ca-card-head">
-              <Clock size={14} color="var(--brand)" />
-              <span className="ca-card-title">Schedule & Time Locks</span>
-            </div>
-            <div className="ca-card-body">
-              <div>
-                <label className="field-label">Start Time (Opens) *</label>
-                <input className="ca-input" type="datetime-local" value={startTime} onChange={e => setStartTime(e.target.value)} />
+              {/* RAG Syllabus Context */}
+              <div className="bg-bg-secondary border border-brand-400/30 rounded-[14px] overflow-hidden shadow-brand relative group">
+                <div className="absolute inset-0 bg-brand-400/5 pointer-events-none"></div>
+                <div className="px-5 py-[14px] border-b border-border-strong bg-bg-primary flex items-center gap-2.5 relative z-10">
+                  <Sparkles size={15} className="text-brand-400" />
+                  <h2 className="font-display font-bold text-[14.5px] text-white tracking-wide flex items-center gap-2">
+                    AI RAG Context 
+                    <span className="text-[9px] bg-brand-400/20 text-brand-400 px-1.5 py-0.5 rounded-sm uppercase tracking-widest">Required</span>
+                  </h2>
+                </div>
+                <div className="p-5 relative z-10">
+                  <label className="block text-[10.5px] font-bold text-text-dim uppercase tracking-[0.1em] mb-2 font-display">Syllabus / Reference Text</label>
+                  <p className="text-[12px] text-text-secondary mb-3 leading-relaxed">Paste the exact syllabus topics, rules, or formulas here. The AI will use this semantic context to grade student answers accurately and check for out-of-syllabus concepts.</p>
+                  <textarea 
+                    className="w-full px-3 py-3 bg-bg-primary border border-border-strong rounded-[8px] text-[13px] text-white focus:outline-none focus:border-brand-400 focus:bg-bg-hover transition-all placeholder:text-text-muted resize-y" 
+                    rows={4}
+                    placeholder="e.g. Unit 1: Binary Search Trees. Properties, rotations, AVL balancing..." 
+                    value={syllabusText} 
+                    onChange={e => setSyllabusText(e.target.value)} 
+                  />
+                </div>
               </div>
-              <div>
-                <label className="field-label">End Time (Deadline) *</label>
-                <input className="ca-input" type="datetime-local" value={endTime} onChange={e => setEndTime(e.target.value)} />
+
+              {/* Target Audience */}
+              <div className="bg-bg-secondary border border-border-strong rounded-[14px] overflow-hidden shadow-sm">
+                <div className="px-5 py-[14px] border-b border-border-strong bg-bg-primary flex items-center gap-2.5">
+                  <Target size={15} className="text-teal-400" />
+                  <h2 className="font-display font-bold text-[14.5px] text-white tracking-wide">Target Audience</h2>
+                </div>
+                <div className="p-5 flex flex-col gap-4">
+                  <div>
+                    <label className="block text-[10.5px] font-bold text-text-dim uppercase tracking-[0.1em] mb-1.5 font-display">Department</label>
+                    <select className={selectClass} style={selectBg} value={department} onChange={e => setDepartment(e.target.value)}>
+                      {DEPARTMENTS.map(d => <option key={d.value} value={d.value} className="bg-bg-secondary">{d.label}</option>)}
+                    </select>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-[10.5px] font-bold text-text-dim uppercase tracking-[0.1em] mb-1.5 font-display">Year</label>
+                      <select className={selectClass} style={selectBg} value={year} onChange={e => setYear(e.target.value)}>
+                        {ACADEMIC_YEARS.map(y => <option key={y.value} value={y.value} className="bg-bg-secondary">{y.label}</option>)}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-[10.5px] font-bold text-text-dim uppercase tracking-[0.1em] mb-1.5 font-display">Batch</label>
+                      <select className={selectClass} style={selectBg} value={batch} onChange={e => setBatch(e.target.value)}>
+                        {BATCHES.map(b => <option key={b.value} value={b.value} className="bg-bg-secondary">{b.label}</option>)}
+                      </select>
+                    </div>
+                  </div>
+                </div>
               </div>
-              <div>
-                <label className="field-label">Release Marks At *</label>
-                <input className="ca-input" type="datetime-local" value={releaseMarksAt} onChange={e => setReleaseMarksAt(e.target.value)} />
+
+              {/* Schedule */}
+              <div className="bg-bg-secondary border border-border-strong rounded-[14px] overflow-hidden shadow-sm">
+                <div className="px-5 py-[14px] border-b border-border-strong bg-bg-primary flex items-center gap-2.5">
+                  <Clock size={15} className="text-amber-400" />
+                  <h2 className="font-display font-bold text-[14.5px] text-white tracking-wide">Schedule & Time Locks</h2>
+                </div>
+                <div className="p-5 flex flex-col gap-4">
+                  <div>
+                    <label className="block text-[10.5px] font-bold text-text-dim uppercase tracking-[0.1em] mb-1.5 font-display">Start Time (Opens) *</label>
+                    <input className="w-full px-3 py-[10px] bg-bg-primary border border-border-strong rounded-[8px] text-[13px] text-white focus:outline-none focus:border-amber-400 focus:bg-bg-hover transition-all [color-scheme:dark]" type="datetime-local" value={startTime} onChange={e => setStartTime(e.target.value)} />
+                  </div>
+                  <div>
+                    <label className="block text-[10.5px] font-bold text-text-dim uppercase tracking-[0.1em] mb-1.5 font-display">End Time (Deadline) *</label>
+                    <input className="w-full px-3 py-[10px] bg-bg-primary border border-border-strong rounded-[8px] text-[13px] text-white focus:outline-none focus:border-amber-400 focus:bg-bg-hover transition-all [color-scheme:dark]" type="datetime-local" value={endTime} onChange={e => setEndTime(e.target.value)} />
+                  </div>
+                  <div className="pt-2 border-t border-border-strong">
+                    <label className="block text-[10.5px] font-bold text-text-dim uppercase tracking-[0.1em] mb-1.5 font-display">Release Marks At *</label>
+                    <input className="w-full px-3 py-[10px] bg-bg-primary border border-border-strong rounded-[8px] text-[13px] text-white focus:outline-none focus:border-brand-400 focus:bg-bg-hover transition-all [color-scheme:dark]" type="datetime-local" value={releaseMarksAt} onChange={e => setReleaseMarksAt(e.target.value)} />
+                  </div>
+                </div>
               </div>
-            </div>
-          </div>
 
-        </aside>
+            </aside>
 
-        {/* ── RIGHT COLUMN ── */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+            {/* ── RIGHT COLUMN (Questions) ── */}
+            <div className="lg:col-span-8 flex flex-col gap-8">
 
-          {/* Test Format */}
-          <div className="type-grid">
-            {[
-              { t: 'MCQ', Icon: CheckSquare, label: 'Multiple Choice (MCQ)', desc: 'Auto-graded with specific correct options.' },
-              { t: 'DESCRIPTIVE', Icon: AlignLeft, label: 'Descriptive / Theory', desc: 'AI-graded open-ended answers against a model.' },
-            ].map(({ t, Icon, label, desc }) => (
-              <button key={t} type="button" className={`type-card ${type === t ? 'active' : ''}`} onClick={() => handleTypeChange(t)}>
-                <div className="type-card-icon"><Icon size={18} /></div>
-                <h3>{label}</h3>
-                <p>{desc}</p>
-              </button>
-            ))}
-          </div>
-
-          {/* Question Builder */}
-          <div>
-            <div className="section-head">
-              <span className="section-title">
-                <Settings2 size={17} color="var(--txt-3)" />
-                Question Builder
-              </span>
-              <span className="q-count">{questions.length} {questions.length === 1 ? 'Question' : 'Questions'}</span>
-            </div>
-
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 16, marginTop: 16 }}>
-              {questions.map((q, idx) => (
-                <div key={q.id} className="q-card">
-                  <div className="q-card-top">
-                    <div className="q-num">{idx + 1}</div>
-                    <button type="button" className="q-del-btn" onClick={() => handleRemoveQuestion(q.id)}>
-                      <Trash2 size={15} />
+              {/* Test Format Toggle */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {[
+                  { t: 'MCQ', Icon: CheckSquare, label: 'Multiple Choice (MCQ)', desc: 'Auto-graded with specific correct options.' },
+                  { t: 'DESCRIPTIVE', Icon: AlignLeft, label: 'Descriptive / Theory', desc: 'AI-graded open-ended answers against a model.' },
+                ].map(({ t, Icon, label, desc }) => {
+                  const isActive = type === t;
+                  return (
+                    <button 
+                      key={t} 
+                      type="button" 
+                      className={`flex flex-col items-start p-5 rounded-[12px] border-2 transition-all text-left gap-2 cursor-pointer ${
+                        isActive 
+                          ? 'border-brand-400 bg-brand-400/10 shadow-brand' 
+                          : 'border-border-strong bg-bg-secondary hover:border-border-hi'
+                      }`} 
+                      onClick={() => handleTypeChange(t)}
+                    >
+                      <div className={`w-9 h-9 rounded-lg flex items-center justify-center mb-1 ${isActive ? 'bg-brand-400 text-white shadow-glow' : 'bg-bg-primary border border-border-strong text-text-dim'}`}>
+                        <Icon size={18} />
+                      </div>
+                      <h3 className={`font-display font-bold text-[15px] ${isActive ? 'text-white' : 'text-text-secondary'}`}>{label}</h3>
+                      <p className="text-[12px] text-text-dim leading-relaxed">{desc}</p>
                     </button>
-                  </div>
+                  );
+                })}
+              </div>
 
-                  {/* Question text / image / marks */}
-                  <div className="q-fields">
-                    <div>
-                      <label className="field-label">Question Text *</label>
-                      <textarea
-                        className="ca-textarea"
-                        rows={2}
-                        placeholder="Enter your question here…"
-                        value={q.text}
-                        onChange={e => updateQuestion(q.id, 'text', e.target.value)}
-                        style={{ minHeight: 40, height: 40 }}
-                      />
-                    </div>
-                    <div>
-                      <label className="field-label">Diagram (Optional)</label>
-                      <label className={`img-upload-label ${q.image_file ? 'has-file' : ''}`}>
-                        {q.image_file ? <CheckCircle2 size={14} /> : <ImageIcon size={14} />}
-                        <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 120 }}>
-                          {q.image_file ? q.image_file.name : 'Upload Image'}
-                        </span>
-                        <input type="file" accept="image/*" style={{ display: 'none' }} onChange={e => updateQuestion(q.id, 'image_file', e.target.files[0])} />
-                      </label>
-                    </div>
-                    <div>
-                      <label className="field-label">Marks</label>
-                      <input className="ca-input" type="number" min="1" value={q.marks} onChange={e => updateQuestion(q.id, 'marks', e.target.value)} style={{ textAlign: 'center' }} />
-                    </div>
-                  </div>
+              {/* Question Builder List */}
+              <div className="flex flex-col gap-5">
+                <div className="flex items-center justify-between border-b border-border-strong pb-3">
+                  <h2 className="font-display font-bold text-[17px] text-white flex items-center gap-2">
+                    <Settings2 size={18} className="text-text-dim" />
+                    Question Builder
+                  </h2>
+                  <span className="bg-bg-secondary border border-border-strong px-3 py-1 rounded-full text-[11px] font-bold text-text-secondary uppercase tracking-widest font-display">
+                    {questions.length} {questions.length === 1 ? 'Question' : 'Questions'}
+                  </span>
+                </div>
 
-                  {/* MCQ options */}
-                  {type === 'MCQ' ? (
-                    <div className="mcq-panel">
-                      <label className="field-label" style={{ marginBottom: 12 }}>Options</label>
-                      <div className="options-grid">
-                        {['A', 'B', 'C', 'D'].map((letter, oi) => (
-                          <div key={letter} className="option-wrap">
-                            <span className="option-letter">{letter}</span>
-                            <input
-                              className="ca-input option-input"
-                              type="text"
-                              placeholder={`Option ${letter}`}
-                              value={q.options[oi]}
-                              onChange={e => updateOption(q.id, oi, e.target.value)}
+                <div className="flex flex-col gap-6">
+                  {questions.map((q, idx) => (
+                    <div key={q.id} className="bg-bg-secondary border border-border-strong rounded-[14px] p-6 relative group">
+                      
+                      <div className="flex items-center justify-between mb-5">
+                        <div className="w-8 h-8 rounded-full bg-bg-primary border border-border-strong flex items-center justify-center font-display font-bold text-[13px] text-brand-400">
+                          {idx + 1}
+                        </div>
+                        <button 
+                          type="button" 
+                          className="w-8 h-8 flex items-center justify-center rounded-md text-text-dim hover:bg-red-500/10 hover:text-red-500 transition-colors" 
+                          onClick={() => handleRemoveQuestion(q.id)}
+                          title="Delete Question"
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      </div>
+
+                      {/* Question text / image / marks */}
+                      <div className="flex flex-col gap-5">
+                        <div className="grid grid-cols-1 md:grid-cols-[1fr_100px] gap-4">
+                          <div>
+                            <label className="block text-[10.5px] font-bold text-text-dim uppercase tracking-[0.1em] mb-1.5 font-display">Question Text *</label>
+                            <textarea
+                              className="w-full px-3 py-3 bg-bg-primary border border-border-strong rounded-[8px] text-[13.5px] text-white focus:outline-none focus:border-brand-400 focus:bg-bg-hover transition-all placeholder:text-text-muted resize-y"
+                              rows={2}
+                              placeholder="Enter your question here…"
+                              value={q.text}
+                              onChange={e => updateQuestion(q.id, 'text', e.target.value)}
                             />
                           </div>
-                        ))}
-                      </div>
-                      <div className="mcq-footer">
-                        <div>
-                          <label className="field-label">Correct Answer</label>
-                          <select className="ca-select" value={q.correctOptionIndex} onChange={e => updateQuestion(q.id, 'correctOptionIndex', Number(e.target.value))}>
-                            {['A', 'B', 'C', 'D'].map((l, i) => <option key={l} value={i}>Option {l}</option>)}
-                          </select>
+                          <div>
+                            <label className="block text-[10.5px] font-bold text-text-dim uppercase tracking-[0.1em] mb-1.5 font-display">Marks</label>
+                            <input 
+                              className="w-full px-3 py-[10.5px] bg-bg-primary border border-border-strong rounded-[8px] text-[15px] font-bold text-brand-400 focus:outline-none focus:border-brand-400 focus:bg-bg-hover transition-all text-center" 
+                              type="number" min="1" 
+                              value={q.marks} 
+                              onChange={e => updateQuestion(q.id, 'marks', e.target.value)} 
+                            />
+                          </div>
                         </div>
-                        <div>
-                          <label className="field-label">Explanation (Optional)</label>
-                          <input className="ca-input" type="text" placeholder="Why is this answer correct?" value={q.explanation} onChange={e => updateQuestion(q.id, 'explanation', e.target.value)} />
-                        </div>
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="model-panel">
-                      <div className="model-label">
-                        <CheckCircle2 size={12} />
-                        Model Answer (for AI Grading)
-                      </div>
-                      <textarea
-                        className="ca-textarea"
-                        rows={4}
-                        placeholder="Write the ideal answer here. The AI will grade student responses against this logic…"
-                        value={q.model_answer}
-                        onChange={e => updateQuestion(q.id, 'model_answer', e.target.value)}
-                      />
-                    </div>
-                  )}
-                </div>
-              ))}
 
-              <button type="button" className="add-q-btn" onClick={handleAddQuestion}>
-                <Plus size={18} />
-                Add Another Question
-              </button>
+                        <div>
+                          <label className="block text-[10.5px] font-bold text-text-dim uppercase tracking-[0.1em] mb-1.5 font-display">Diagram (Optional)</label>
+                          <label className={`w-fit flex items-center gap-2 px-4 py-2 rounded-[8px] border transition-all cursor-pointer font-medium text-[12.5px] ${q.image_file ? 'bg-brand-400/10 border-brand-400 text-brand-400' : 'bg-bg-primary border-border-strong text-text-secondary hover:border-brand-400 hover:text-white'}`}>
+                            {q.image_file ? <CheckCircle2 size={15} /> : <ImageIcon size={15} />}
+                            <span className="max-w-[200px] truncate">
+                              {q.image_file ? q.image_file.name : 'Upload Image'}
+                            </span>
+                            <input type="file" accept="image/*" className="hidden" onChange={e => updateQuestion(q.id, 'image_file', e.target.files[0])} />
+                          </label>
+                        </div>
+
+                        {/* Formatting based on Type */}
+                        {type === 'MCQ' ? (
+                          <div className="mt-2 bg-bg-primary border border-border-strong rounded-[10px] p-5">
+                            <label className="block text-[11px] font-bold text-text-dim uppercase tracking-[0.1em] mb-3 font-display">Answer Options</label>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-5">
+                              {['A', 'B', 'C', 'D'].map((letter, oi) => (
+                                <div key={letter} className="flex items-center gap-3">
+                                  <span className="flex items-center justify-center w-7 h-7 rounded bg-bg-secondary border border-border-strong text-[12px] font-bold text-text-secondary shrink-0 font-display">
+                                    {letter}
+                                  </span>
+                                  <input
+                                    className="w-full px-3 py-2 bg-bg-secondary border border-border-strong rounded-[6px] text-[13px] text-white focus:outline-none focus:border-brand-400 transition-all placeholder:text-text-muted"
+                                    type="text"
+                                    placeholder={`Option ${letter}`}
+                                    value={q.options[oi]}
+                                    onChange={e => updateOption(q.id, oi, e.target.value)}
+                                  />
+                                </div>
+                              ))}
+                            </div>
+                            
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4 border-t border-border-strong">
+                              <div>
+                                <label className="block text-[10.5px] font-bold text-text-dim uppercase tracking-[0.1em] mb-1.5 font-display">Correct Answer</label>
+                                <select className={selectClass} style={selectBg} value={q.correctOptionIndex} onChange={e => updateQuestion(q.id, 'correctOptionIndex', Number(e.target.value))}>
+                                  {['A', 'B', 'C', 'D'].map((l, i) => <option key={l} value={i} className="bg-bg-secondary">Option {l}</option>)}
+                                </select>
+                              </div>
+                              <div>
+                                <label className="block text-[10.5px] font-bold text-text-dim uppercase tracking-[0.1em] mb-1.5 font-display">Explanation (Optional)</label>
+                                <input className="w-full px-3 py-[10px] bg-bg-secondary border border-border-strong rounded-[8px] text-[13px] text-white focus:outline-none focus:border-brand-400 transition-all placeholder:text-text-muted" type="text" placeholder="Why is this answer correct?" value={q.explanation} onChange={e => updateQuestion(q.id, 'explanation', e.target.value)} />
+                              </div>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="mt-2 bg-brand-400/5 border border-brand-400/20 rounded-[10px] p-5">
+                            <label className="flex items-center gap-2 text-[11px] font-bold text-brand-400 uppercase tracking-[0.1em] mb-3 font-display">
+                              <CheckCircle2 size={14} /> Model Answer (For AI Grading)
+                            </label>
+                            <textarea
+                              className="w-full px-3 py-3 bg-bg-primary border border-border-strong rounded-[8px] text-[13.5px] text-white focus:outline-none focus:border-brand-400 transition-all placeholder:text-text-muted resize-y"
+                              rows={4}
+                              placeholder="Write the ideal, complete answer here. The AI will cross-reference this and your Syllabus Text to grade student submissions."
+                              value={q.model_answer}
+                              onChange={e => updateQuestion(q.id, 'model_answer', e.target.value)}
+                            />
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+
+                  <button 
+                    type="button" 
+                    className="w-full py-4 rounded-[12px] border-2 border-dashed border-border-strong text-text-secondary hover:border-brand-400 hover:text-brand-400 hover:bg-brand-400/5 flex items-center justify-center gap-2 font-display font-bold transition-all bg-bg-primary/50 text-[14px]" 
+                    onClick={handleAddQuestion}
+                  >
+                    <Plus size={18} /> Add Another Question
+                  </button>
+                </div>
+              </div>
+
             </div>
           </div>
         </div>
-      </div>
+      </main>
     </div>
   );
 };

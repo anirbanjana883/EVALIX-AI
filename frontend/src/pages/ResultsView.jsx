@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
+import { useAuth } from "../context/AuthContext";
 import { supabase } from "../lib/supabase";
 import {
   ArrowLeft,
@@ -15,331 +16,14 @@ import {
   AlertCircle,
   Lightbulb,
   BrainCircuit,
+  TriangleAlert,
+  ShieldAlert
 } from "lucide-react";
 import toast from "react-hot-toast";
 
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3000";
 
-/* ─── Styles ─── */
-const injectStyles = () => {
-  if (document.getElementById("rv-styles")) return;
-  const s = document.createElement("style");
-  s.id = "rv-styles";
-  s.textContent = `
-    @import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500;600&display=swap');
-
-    :root {
-      --brand:      #D85A30;
-      --brand-dim:  #993C1D;
-      --brand-glow: rgba(216,90,48,.2);
-      --brand-g2:   rgba(216,90,48,.07);
-      --brand-g3:   rgba(216,90,48,.13);
-      --bg-base:    #131210;
-      --bg-panel:   #1A1917;
-      --bg-card:    #201F1D;
-      --bg-hover:   #272523;
-      --border:     #2E2D2A;
-      --border-hi:  #403E3A;
-      --txt-1:      #F5F3EE;
-      --txt-2:      #C8C5BC;
-      --txt-3:      #7A7870;
-      --emerald:    #34d399;
-      --emerald-g:  rgba(52,211,153,.1);
-      --emerald-b:  rgba(52,211,153,.18);
-      --amber:      #f59e0b;
-      --r-lg:       14px;
-      --r-md:       10px;
-      --r-sm:       7px;
-      --tx:         220ms cubic-bezier(.4,0,.2,1);
-    }
-    *,*::before,*::after { box-sizing: border-box; margin: 0; padding: 0 }
-    body { font-family: 'DM Sans', sans-serif; background: var(--bg-base); color: var(--txt-1); -webkit-font-smoothing: antialiased }
-    ::-webkit-scrollbar { width: 4px }
-    ::-webkit-scrollbar-track { background: transparent }
-    ::-webkit-scrollbar-thumb { background: var(--border-hi); border-radius: 99px }
-    @keyframes spin { to { transform: rotate(360deg) } }
-    @keyframes fadeUp { from { opacity:0; transform:translateY(10px) } to { opacity:1; transform:translateY(0) } }
-
-    /* ── Loading / Error ── */
-    .rv-center {
-      min-height: 100vh; background: var(--bg-base);
-      display: flex; flex-direction: column;
-      align-items: center; justify-content: center; gap: 14px;
-      color: var(--txt-3);
-    }
-    .rv-center-title { font-family: 'Syne', sans-serif; font-size: 14px; font-weight: 700; color: var(--txt-2) }
-
-    /* Time-lock screen */
-    .rv-lock-screen {
-      min-height: 100vh; background: var(--bg-base);
-      display: flex; align-items: center; justify-content: center; padding: 24px;
-    }
-    .rv-lock-card {
-      background: var(--bg-card); border: 1px solid var(--border);
-      border-radius: var(--r-lg); padding: 36px 32px;
-      max-width: 400px; width: 100%; text-align: center;
-    }
-    .rv-lock-icon {
-      width: 60px; height: 60px; border-radius: 16px;
-      background: var(--brand-g3); border: 1px solid rgba(216,90,48,.25);
-      display: flex; align-items: center; justify-content: center;
-      margin: 0 auto 18px;
-    }
-    .rv-lock-title {
-      font-family: 'Syne', sans-serif; font-size: 18px; font-weight: 700;
-      color: var(--txt-1); margin-bottom: 8px;
-    }
-    .rv-lock-sub { font-size: 13.5px; color: var(--txt-2); line-height: 1.65; margin-bottom: 24px }
-    .rv-lock-btn {
-      padding: 10px 24px; border-radius: var(--r-md);
-      background: var(--bg-panel); border: 1px solid var(--border-hi);
-      color: var(--txt-1); font-size: 13px; font-weight: 700;
-      font-family: 'Syne', sans-serif; cursor: pointer;
-      transition: all var(--tx);
-    }
-    .rv-lock-btn:hover { border-color: var(--brand); color: var(--brand) }
-
-    /* ── Header ── */
-    .rv-header {
-      position: sticky; top: 0; z-index: 30;
-      background: var(--bg-panel); border-bottom: 1px solid var(--border);
-      height: 64px;
-      display: flex; align-items: center; justify-content: space-between;
-      padding: 0 28px; gap: 16px;
-    }
-    .rv-header-left { display: flex; align-items: center; gap: 14px; min-width: 0 }
-    .rv-brand { display: flex; align-items: center; gap: 10px; flex-shrink: 0 }
-    .rv-brand-ring {
-      width: 34px; height: 34px; border-radius: 50%;
-      border: 2px solid var(--brand); background: var(--brand-g2);
-      display: flex; align-items: center; justify-content: center;
-      box-shadow: 0 0 10px var(--brand-glow); flex-shrink: 0;
-    }
-    .rv-brand-name {
-      font-family: 'Syne', sans-serif; font-weight: 800;
-      font-size: 15px; letter-spacing: .06em; color: #fff;
-    }
-    .rv-brand-name span { color: var(--brand) }
-    .rv-divider { color: var(--border-hi); font-size: 18px; margin: 0 2px; flex-shrink: 0 }
-    .rv-page-title {
-      font-family: 'Syne', sans-serif; font-size: 16px;
-      font-weight: 700; color: #fff; letter-spacing: -.01em;
-      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-    }
-    .rv-page-sub { font-size: 11px; color: var(--txt-3); margin-top: 1px }
-    .rv-back-btn {
-      display: flex; align-items: center; justify-content: center;
-      width: 36px; height: 36px; border-radius: var(--r-sm);
-      border: 1px solid var(--border); background: transparent;
-      color: var(--txt-2); cursor: pointer; transition: all var(--tx); flex-shrink: 0;
-    }
-    .rv-back-btn:hover { color: #fff; border-color: var(--border-hi); background: var(--bg-hover) }
-
-    /* Header right */
-    .rv-header-right { display: flex; align-items: center; gap: 18px; flex-shrink: 0 }
-    .rv-score-block { text-align: right }
-    .rv-score-label {
-      font-size: 10px; color: var(--txt-3); text-transform: uppercase;
-      letter-spacing: .1em; font-weight: 600; margin-bottom: 2px;
-    }
-    .rv-score-val {
-      display: flex; align-items: center; gap: 7px;
-      font-family: 'Syne', sans-serif; font-size: 20px; font-weight: 700; color: var(--brand);
-    }
-    .rv-score-max { font-size: 13px; color: var(--txt-2); font-weight: 400 }
-    .rv-divider-line { width: 1px; height: 36px; background: var(--border-hi); flex-shrink: 0 }
-    .rv-evaluated-badge {
-      display: flex; align-items: center; gap: 5px;
-      font-size: 12px; font-weight: 600; color: var(--emerald);
-    }
-
-    /* ── Main ── */
-    .rv-main {
-      max-width: 1000px; margin: 0 auto;
-      padding: 28px 28px 80px;
-      display: flex; flex-direction: column; gap: 20px;
-    }
-
-    /* Intro card */
-    .rv-intro-card {
-      display: flex; align-items: flex-start; gap: 16px;
-      padding: 20px 22px;
-      background: var(--brand-g3); border: 1px solid rgba(216,90,48,.2);
-      border-radius: var(--r-lg);
-    }
-    .rv-intro-icon {
-      width: 44px; height: 44px; border-radius: 12px; flex-shrink: 0;
-      background: rgba(216,90,48,.2); border: 1px solid rgba(216,90,48,.3);
-      display: flex; align-items: center; justify-content: center;
-    }
-    .rv-intro-title {
-      font-family: 'Syne', sans-serif; font-size: 15px; font-weight: 700;
-      color: var(--txt-1); margin-bottom: 4px;
-    }
-    .rv-intro-sub { font-size: 13px; color: var(--txt-2); line-height: 1.6 }
-
-    /* ── Question card ── */
-    .rv-q-card {
-      background: var(--bg-card); border: 1px solid var(--border);
-      border-radius: var(--r-lg); overflow: hidden;
-      animation: fadeUp .3s ease forwards;
-    }
-    .rv-q-head {
-      padding: 18px 22px; border-bottom: 1px solid var(--border);
-      background: var(--bg-panel);
-    }
-    .rv-q-head-row {
-      display: flex; align-items: flex-start; justify-content: space-between; gap: 16px;
-      margin-bottom: 0;
-    }
-    .rv-q-left { display: flex; gap: 14px; align-items: flex-start }
-    .rv-q-num {
-      width: 30px; height: 30px; border-radius: 8px; flex-shrink: 0;
-      background: var(--bg-card); border: 1px solid var(--border-hi);
-      display: flex; align-items: center; justify-content: center;
-      font-family: 'Syne', sans-serif; font-size: 13px; font-weight: 700; color: var(--brand);
-    }
-    .rv-q-chip {
-      display: inline-block; padding: 2px 8px; margin-bottom: 6px;
-      background: var(--bg-hover); border: 1px solid var(--border-hi);
-      border-radius: 4px; font-size: 10px; font-weight: 700;
-      color: var(--txt-3); letter-spacing: .1em; text-transform: uppercase;
-      font-family: 'Syne', sans-serif;
-    }
-    .rv-q-text { font-size: 14.5px; color: var(--txt-1); line-height: 1.65; font-weight: 500 }
-    .rv-q-score {
-      flex-shrink: 0; text-align: right;
-    }
-    .rv-q-score-label {
-      font-size: 10px; color: var(--txt-3); text-transform: uppercase;
-      letter-spacing: .1em; font-weight: 600; margin-bottom: 3px;
-    }
-    .rv-q-score-val {
-      font-family: 'Syne', sans-serif; font-size: 17px; font-weight: 700; color: var(--brand);
-    }
-    .rv-q-score-max { font-size: 12px; color: var(--txt-2); font-weight: 400 }
-    .rv-q-image {
-      margin-top: 14px; margin-left: 44px;
-      border-radius: var(--r-md); overflow: hidden;
-      border: 1px solid var(--border-hi); display: inline-block;
-    }
-
-    /* ── Section label ── */
-    .rv-section-label {
-      display: flex; align-items: center; gap: 7px;
-      font-size: 10.5px; font-weight: 700; color: var(--txt-3);
-      letter-spacing: .1em; text-transform: uppercase; margin-bottom: 14px;
-    }
-
-    /* ── MCQ layout ── */
-    .rv-mcq-body { padding: 22px; display: flex; flex-direction: column; gap: 10px }
-
-    .rv-option {
-      display: flex; align-items: center; justify-content: space-between; gap: 12px;
-      padding: 13px 16px; border-radius: var(--r-md); border: 2px solid;
-      transition: all var(--tx);
-    }
-    /* Default (unselected/unrelated) */
-    .rv-option-default {
-      background: var(--bg-panel); border-color: var(--border);
-    }
-    /* Selected + Correct */
-    .rv-option-correct-selected {
-      background: rgba(52,211,153,.08); border-color: var(--emerald);
-    }
-    /* Selected + Wrong */
-    .rv-option-wrong-selected {
-      background: rgba(239,68,68,.08); border-color: #ef4444;
-    }
-    /* Not selected but is correct answer */
-    .rv-option-correct-unselected {
-      background: rgba(52,211,153,.05); border-color: rgba(52,211,153,.35); border-style: dashed;
-    }
-
-    .rv-option-left { display: flex; align-items: center; gap: 12px }
-    .rv-option-letter {
-      width: 30px; height: 30px; border-radius: 8px; flex-shrink: 0;
-      display: flex; align-items: center; justify-content: center;
-      font-family: 'Syne', sans-serif; font-size: 12px; font-weight: 700;
-    }
-    .rv-option-letter-default { background: var(--bg-card); border: 1px solid var(--border-hi); color: var(--txt-3) }
-    .rv-option-letter-active { background: rgba(255,255,255,.1); border: 1px solid rgba(255,255,255,.15); color: #fff }
-    .rv-option-text { font-size: 14px }
-    .rv-option-text-default { color: var(--txt-2) }
-    .rv-option-text-active { font-weight: 600; color: var(--txt-1) }
-
-    .rv-option-right { display: flex; align-items: center; gap: 10px; flex-shrink: 0 }
-    .rv-option-badge {
-      padding: 3px 10px; border-radius: 5px;
-      font-size: 10.5px; font-weight: 700; font-family: 'Syne', sans-serif;
-      letter-spacing: .06em; text-transform: uppercase; border: 1px solid;
-    }
-    .rv-badge-correct-selected { background: var(--emerald-g); border-color: var(--emerald-b); color: var(--emerald) }
-    .rv-badge-wrong { background: rgba(239,68,68,.1); border-color: rgba(239,68,68,.25); color: #ef4444 }
-    .rv-badge-correct-hint { background: var(--emerald-g); border-color: var(--emerald-b); color: var(--emerald) }
-
-    /* MCQ explanation */
-    .rv-explanation {
-      margin-top: 8px; padding: 14px 16px;
-      background: var(--bg-panel); border: 1px solid var(--border-hi);
-      border-radius: var(--r-md);
-      font-size: 13.5px; color: var(--txt-2); line-height: 1.65;
-    }
-    .rv-explanation-border {
-      padding-top: 18px; margin-top: 18px; border-top: 1px solid var(--border);
-    }
-
-    /* ── Descriptive layout ── */
-    .rv-desc-body { padding: 22px }
-    .rv-desc-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 24px }
-
-    /* Text box variants */
-    .rv-text-box {
-      padding: 14px 16px; border-radius: var(--r-md);
-      font-size: 13.5px; line-height: 1.65; border: 1px solid;
-    }
-    .rv-text-box-default { background: var(--bg-panel); border-color: var(--border-hi); color: var(--txt-2); font-style: italic }
-    .rv-text-box-ai { background: var(--bg-card); border-color: var(--border); color: var(--txt-2) }
-    .rv-text-box-teacher { background: var(--brand-g3); border-color: rgba(216,90,48,.25); color: var(--txt-2) }
-    .rv-text-box-model { background: var(--emerald-g); border-color: var(--emerald-b); color: rgba(240,253,244,.85) }
-    .rv-text-box-empty { background: var(--bg-panel); border-color: var(--border-hi); color: var(--txt-3); display: flex; align-items: center; gap: 8px; font-style: normal }
-
-    .rv-file-link {
-      display: flex; align-items: center; gap: 12px;
-      padding: 14px 16px; border-radius: var(--r-md);
-      background: var(--bg-panel); border: 1px solid var(--border-hi);
-      text-decoration: none; transition: border-color var(--tx); margin-top: 10px;
-    }
-    .rv-file-link:hover { border-color: var(--brand) }
-    .rv-file-icon { padding: 8px; background: var(--bg-card); border-radius: 7px }
-    .rv-file-title { font-size: 13.5px; font-weight: 600; color: var(--txt-1) }
-    .rv-file-sub { font-size: 11px; color: var(--txt-3); margin-top: 2px }
-
-    .rv-model-section {
-      margin-top: 22px; padding-top: 20px; border-top: 1px solid var(--border);
-    }
-
-    /* ── Responsive ── */
-    @media (max-width: 768px) {
-      .rv-header { padding: 0 16px; height: 56px }
-      .rv-main { padding: 16px 14px 80px }
-      .rv-page-sub { display: none }
-      .rv-score-block { display: none }
-      .rv-divider-line { display: none }
-      .rv-desc-grid { grid-template-columns: 1fr }
-      .rv-q-image { margin-left: 0; margin-top: 14px }
-    }
-    @media (max-width: 540px) {
-      .rv-option { flex-direction: column; align-items: flex-start }
-      .rv-option-right { margin-left: 42px }
-    }
-  `;
-  document.head.appendChild(s);
-};
-
-/* ─── Component ─── */
 const ResultsView = () => {
-  injectStyles();
   const { id } = useParams();
   const navigate = useNavigate();
 
@@ -353,18 +37,24 @@ const ResultsView = () => {
       try {
         const { data: { session }, error: sessionError } = await supabase.auth.getSession();
         if (sessionError || !session) throw new Error("Authentication error.");
+        
         const response = await fetch(`${API_URL}/api/assignments/${id}/result`, {
           headers: { Authorization: `Bearer ${session.access_token}` },
         });
         const json = await response.json();
+        
         if (!response.ok) {
           if (response.status === 403) { setErrorMsg(json.error || "Results are not released yet."); return; }
           throw new Error(json.error || "Failed to load results.");
         }
+        
         if (json.success && json.submission) {
           setResultData(json.submission);
-          const totalMax = (json.submission.assignment.questions || []).reduce((sum, q) => sum + (q.max_marks || 0), 0);
-          setMaxTotalMarks(totalMax);
+          // Safely calculate total possible marks if not quarantined
+          if (!json.is_quarantined) {
+            const totalMax = (json.submission.assignment?.questions || []).reduce((sum, q) => sum + (q.max_marks || 0), 0);
+            setMaxTotalMarks(totalMax);
+          }
         }
       } catch (error) {
         console.error(error);
@@ -377,25 +67,29 @@ const ResultsView = () => {
     fetchResults();
   }, [id]);
 
-  const isImage = (url) => url && url.match(/\.(jpeg|jpg|gif|png)$/i) != null;
+  const isImage = (url) => url && url.match(/\.(jpeg|jpg|gif|png|webp)$/i) != null;
 
+  /* ── Loading State ── */
   if (isLoading) {
     return (
-      <div className="rv-center">
-        <Loader2 size={36} color="var(--brand)" style={{ animation: "spin 1s linear infinite" }} />
-        <span className="rv-center-title">Retrieving your evaluated results…</span>
+      <div className="h-screen bg-bg-base flex flex-col items-center justify-center text-text-dim font-sans">
+        <Loader2 className="w-10 h-10 animate-spin text-brand-400 mb-4 shrink-0" />
+        <p className="font-display font-bold text-[14px] text-text-secondary tracking-wide">Retrieving your evaluated results…</p>
       </div>
     );
   }
 
+  /* ── General Locked / Error State ── */
   if (errorMsg) {
     return (
-      <div className="rv-lock-screen">
-        <div className="rv-lock-card">
-          <div className="rv-lock-icon"><Lock size={24} color="var(--brand)" /></div>
-          <div className="rv-lock-title">Results Locked</div>
-          <p className="rv-lock-sub">{errorMsg}</p>
-          <button className="rv-lock-btn" onClick={() => navigate("/student-dashboard")}>Return to Dashboard</button>
+      <div className="h-screen bg-bg-base flex flex-col items-center justify-center font-sans p-6">
+        <div className="bg-bg-secondary border border-border-strong rounded-2xl p-8 max-w-md w-full text-center shadow-sm">
+          <Lock className="w-14 h-14 text-amber-400 mx-auto mb-4 shrink-0" />
+          <h2 className="font-display text-[18px] font-bold text-white mb-2">Results Locked</h2>
+          <p className="text-text-secondary text-[13.5px] mb-6 leading-relaxed">{errorMsg}</p>
+          <button onClick={() => navigate("/student-dashboard")} className="px-6 py-3 bg-bg-primary text-white hover:border-brand-400 border border-border-strong rounded-lg font-bold text-[13px] transition-colors font-display w-full">
+            Return to Dashboard
+          </button>
         </div>
       </div>
     );
@@ -403,225 +97,396 @@ const ResultsView = () => {
 
   if (!resultData) return null;
 
-  const { assignment, answers } = resultData;
+  /* ── 🚨 Quarantine State (AI Flagged, Awaiting Teacher Override) ── */
+  if (resultData.is_quarantined) {
+    return (
+      <div className="h-screen bg-bg-base flex flex-col font-sans selection:bg-brand-400/30 selection:text-white overflow-hidden">
+        {/* Simple Header for Quarantined View */}
+        <header className="shrink-0 bg-bg-primary/90 backdrop-blur-lg border-b border-border-strong h-[68px] flex items-center justify-between px-6 lg:px-8 z-30">
+          <div className="flex items-center gap-4">
+            <button 
+              className="w-9 h-9 rounded-[8px] bg-bg-secondary border border-border-strong flex items-center justify-center text-text-secondary hover:text-white hover:border-brand-400 transition-colors shrink-0" 
+              onClick={() => navigate("/student-dashboard")} 
+              title="Go back"
+            >
+              <ArrowLeft size={16} className="shrink-0" />
+            </button>
+            <div className="flex items-center gap-3 border-l border-border-strong pl-4 ml-1">
+              <div className="hidden sm:flex w-8 h-8 rounded-full border border-brand-400 bg-brand-400/10 items-center justify-center shrink-0">
+                <BrainCircuit size={14} className="text-brand-400 shrink-0" />
+              </div>
+              <h1 className="font-display text-[16px] font-bold text-white tracking-wide leading-tight">
+                {resultData.assignment?.title || "Assignment"}
+              </h1>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 px-3 py-1.5 rounded-md bg-amber-400/10 border border-amber-400/25 text-[11px] font-bold text-amber-400 tracking-widest font-display uppercase shrink-0">
+            <Lock size={12} className="shrink-0" /> Pending Review
+          </div>
+        </header>
+
+        {/* Scrollable Quarantine Body */}
+        <main className="flex-1 overflow-y-auto w-full p-6">
+          <div className="min-h-full flex items-center justify-center animate-fade-up">
+            <div className="bg-bg-secondary border border-red-500/30 rounded-2xl p-8 md:p-12 max-w-4xl w-full text-center shadow-[0_0_40px_rgba(239,68,68,0.1)]">
+              <div className="bg-red-500/10 w-24 h-24 rounded-full flex items-center justify-center mx-auto mb-8 border border-red-500/20">
+                <ShieldAlert size={48} className="text-red-500 shrink-0" />
+              </div>
+              <h2 className="text-[clamp(24px,4vw,32px)] font-display font-extrabold text-white mb-4 tracking-tight">
+                Submission Under Review
+              </h2>
+              <p className="text-[15px] md:text-[16px] text-text-secondary max-w-2xl mx-auto leading-relaxed mb-8">
+                Your submission was flagged by our automated systems for unusual activity, poor image readability, or potential similarity matches. 
+                <br/><br/>
+                Your results are temporarily hidden until your professor manually reviews your answers and clears the flag. Once reviewed, your final grade will appear here.
+              </p>
+              <button 
+                onClick={() => navigate("/student-dashboard")}
+                className="px-8 py-3.5 bg-bg-primary border border-border-strong text-white hover:border-brand-400 rounded-lg font-bold text-[14px] transition-colors font-display"
+              >
+                Return to Dashboard
+              </button>
+            </div>
+          </div>
+        </main>
+      </div>
+    );
+  }
+
+  /* ── Normal Results Rendering (Teacher Cleared Flag or AI Passed) ── */
+  const { assignment, answers, plagiarism_reports, teacher_review } = resultData;
+  const hasGlobalTeacherReview = !!teacher_review;
 
   return (
-    <div style={{ minHeight: "100vh", background: "var(--bg-base)", color: "var(--txt-1)", fontFamily: "'DM Sans', sans-serif" }}>
+    <div className="h-screen bg-bg-base text-text-primary font-sans flex flex-col overflow-hidden selection:bg-brand-400/30 selection:text-white">
 
       {/* ── Header ── */}
-      <header className="rv-header">
-        <div className="rv-header-left">
-          <div className="rv-brand">
-            <div className="rv-brand-ring"><BrainCircuit size={16} color="var(--brand)" /></div>
-            <span className="rv-brand-name">EVALIX <span>AI</span></span>
-          </div>
-          <span className="rv-divider">·</span>
-          <div style={{ minWidth: 0 }}>
-            <div className="rv-page-title">{assignment?.title || "Assignment Results"}</div>
-            <div className="rv-page-sub">{assignment?.subject || "Subject"}</div>
+      <header className="shrink-0 bg-bg-primary/90 backdrop-blur-lg border-b border-border-strong h-[68px] flex items-center justify-between px-6 lg:px-8 z-30">
+        <div className="flex items-center gap-4">
+          <button 
+            className="w-9 h-9 rounded-[8px] bg-bg-secondary border border-border-strong flex items-center justify-center text-text-secondary hover:text-white hover:border-brand-400 transition-colors shrink-0" 
+            onClick={() => navigate("/student-dashboard")} 
+            title="Go back"
+          >
+            <ArrowLeft size={16} className="shrink-0" />
+          </button>
+          
+          <div className="flex items-center gap-3 border-l border-border-strong pl-4 ml-1">
+            <div className="hidden sm:flex w-8 h-8 rounded-full border border-brand-400 bg-brand-400/10 items-center justify-center shrink-0">
+              <BrainCircuit size={14} className="text-brand-400 shrink-0" />
+            </div>
+            <div className="flex flex-col">
+              <h1 className="font-display text-[16px] font-bold text-white tracking-wide leading-tight truncate max-w-[200px] sm:max-w-md">
+                {assignment?.title || "Assignment Results"}
+              </h1>
+              <div className="flex items-center gap-1.5 text-[10.5px] text-text-dim font-display uppercase tracking-widest mt-0.5 whitespace-nowrap overflow-hidden text-ellipsis">
+                <span className="text-brand-400 font-bold">{assignment?.subject || "Subject"}</span>
+              </div>
+            </div>
           </div>
         </div>
 
-        <div className="rv-header-right">
-          <div className="rv-score-block">
-            <div className="rv-score-label">Final Score</div>
-            <div className="rv-score-val">
-              <Award size={16} />
-              {resultData.total_score}
-              <span className="rv-score-max">/ {maxTotalMarks}</span>
+        <div className="flex items-center gap-4">
+          <div className="flex items-center gap-4 bg-bg-secondary border border-border-strong rounded-xl px-4 py-1.5 shrink-0">
+            <div className="flex flex-col">
+              <span className="text-[9px] font-bold text-text-dim uppercase tracking-[0.1em] font-display">Final Score</span>
+              <div className="font-display font-extrabold text-[16px] text-white leading-none mt-0.5">
+                {teacher_review?.final_score ?? resultData.total_score}
+                <span className="text-brand-400 text-[13px]"> / {maxTotalMarks}</span>
+              </div>
+            </div>
+            <div className="w-[1px] h-6 bg-border-strong hidden sm:block"></div>
+            <div className="flex-col hidden sm:flex">
+              <span className="text-[9px] font-bold text-text-dim uppercase tracking-[0.1em] font-display">Status</span>
+              <span className="flex items-center gap-1 text-[11px] font-bold text-teal-400 font-display uppercase tracking-wide mt-0.5">
+                <CheckCircle2 size={12} className="shrink-0" /> Evaluated
+              </span>
             </div>
           </div>
-          <div className="rv-divider-line" />
-          <div>
-            <div className="rv-score-label">Status</div>
-            <div className="rv-evaluated-badge"><CheckCircle2 size={14} /> Evaluated</div>
-          </div>
-          <button className="rv-back-btn" onClick={() => navigate("/student-dashboard")} title="Back">
-            <ArrowLeft size={16} />
-          </button>
         </div>
       </header>
 
-      {/* ── Main ── */}
-      <main className="rv-main">
+      {/* ── Scrollable Main ── */}
+      <main className="flex-1 overflow-y-auto w-full custom-scrollbar p-6 lg:p-8 pb-24">
+        {/* Expanded max-w to 1520px to fit screen nicely, just like the dashboard */}
+        <div className="max-w-[1520px] mx-auto flex flex-col gap-6">
 
-        {/* Intro card */}
-        <div className="rv-intro-card">
-          <div className="rv-intro-icon"><GraduationCap size={20} color="var(--brand)" /></div>
-          <div>
-            <div className="rv-intro-title">Evaluation Complete</div>
-            <p className="rv-intro-sub">Review the detailed breakdown below to understand your score and areas for improvement.</p>
+          {/* 🚨 Persistent Plagiarism Warning Banner (If teacher cleared flag but left the report) */}
+          {plagiarism_reports && plagiarism_reports.length > 0 && (
+            <div className="bg-red-500/10 border border-red-500/30 rounded-2xl p-5 flex items-start gap-4 shadow-[0_0_20px_rgba(239,68,68,0.15)] animate-fade-up">
+               <div className="w-10 h-10 rounded-full bg-red-500/20 flex items-center justify-center shrink-0 border border-red-500/40">
+                 <ShieldAlert className="text-red-500 w-5 h-5 shrink-0" />
+               </div>
+               <div>
+                 <h3 className="text-red-500 font-display text-[15px] font-bold uppercase tracking-wide mb-1">Warning: Semantic Similarity Detected</h3>
+                 <p className="text-[13.5px] text-red-200/80 font-medium leading-relaxed">
+                   Portions of this submission triggered plagiarism detection alerts. Your instructor has reviewed these matches and applied final grades accordingly.
+                 </p>
+               </div>
+            </div>
+          )}
+
+          {/* 👨‍🏫 Global Teacher Override Banner */}
+          {hasGlobalTeacherReview && (
+            <div className="bg-brand-400/10 border border-brand-400/30 rounded-2xl p-5 flex items-start gap-4 shadow-[0_0_20px_rgba(216,90,48,0.1)] animate-fade-up">
+               <div className="w-10 h-10 rounded-full bg-brand-400/20 flex items-center justify-center shrink-0 border border-brand-400/40">
+                 <Award className="text-brand-400 w-5 h-5 shrink-0" />
+               </div>
+               <div>
+                 <h3 className="text-brand-400 font-display text-[15px] font-bold uppercase tracking-wide mb-1">👨‍🏫 Grade Updated by Professor</h3>
+                 <p className="text-[13.5px] text-text-secondary font-medium leading-relaxed italic">
+                   "{teacher_review.teacher_feedback}"
+                 </p>
+               </div>
+            </div>
+          )}
+
+          {/* Intro Card */}
+          <div className="bg-bg-secondary border border-border-strong rounded-2xl p-6 flex flex-col sm:flex-row items-start sm:items-center gap-4 shadow-sm animate-fade-up">
+            <div className="w-12 h-12 rounded-xl bg-brand-400/10 border border-brand-400/20 flex items-center justify-center shrink-0">
+              <GraduationCap size={24} className="text-brand-400 shrink-0" />
+            </div>
+            <div>
+              <h2 className="font-display text-[17px] font-bold text-white mb-1">Evaluation Complete</h2>
+              <p className="text-[13.5px] text-text-secondary">Review the detailed AI breakdown and instructor notes below to understand your score and areas for improvement.</p>
+            </div>
           </div>
-        </div>
 
-        {/* Questions */}
-        {assignment?.questions?.map((question, index) => {
-          const studentAnswer = answers.find((a) => a.question_id === question.id);
-          const score = studentAnswer?.score ?? 0;
-          const hasTeacherNote = !!studentAnswer?.teacher_feedback;
-          const isMCQ = assignment.type === "MCQ" || (question.mcq_options && question.mcq_options.length > 0);
+          {/* Questions Render Loop */}
+          <div className="flex flex-col gap-8 mt-4">
+            {assignment?.questions?.map((question, index) => {
+              const studentAnswer = answers?.find((a) => a.question_id === question.id || a.question?.id === question.id);
+              const score = studentAnswer?.score ?? 0;
+              const hasTeacherNote = !!studentAnswer?.teacher_feedback;
+              const isMCQ = assignment.type === "MCQ" || (question.mcq_options && question.mcq_options.length > 0);
+              
+              // Normalize file tracking
+              const filesArray = studentAnswer?.file_urls || (studentAnswer?.file_url ? [studentAnswer.file_url] : []);
 
-          return (
-            <div key={question.id} className="rv-q-card" style={{ animationDelay: `${index * 60}ms` }}>
-
-              {/* Question header */}
-              <div className="rv-q-head">
-                <div className="rv-q-head-row">
-                  <div className="rv-q-left">
-                    <div className="rv-q-num">{index + 1}</div>
-                    <div>
-                      <div className="rv-q-chip">{isMCQ ? "Multiple Choice" : "Descriptive"}</div>
-                      <div className="rv-q-text">{question.question_text}</div>
+              return (
+                <div key={question.id} className="bg-bg-secondary border border-border-strong rounded-2xl overflow-hidden shadow-sm animate-fade-up" style={{ animationDelay: `${index * 50}ms` }}>
+                  
+                  {/* Question Header */}
+                  <div className="px-6 py-5 border-b border-border-strong bg-bg-primary flex flex-col sm:flex-row sm:items-start justify-between gap-4">
+                    <div className="flex items-start gap-4 w-full">
+                      <div className="w-9 h-9 rounded-full bg-bg-secondary border border-border-strong flex items-center justify-center font-display font-bold text-[14px] text-brand-400 shrink-0 shadow-inner">
+                        {index + 1}
+                      </div>
+                      <div className="mt-0.5 flex-1 min-w-0">
+                        <span className="inline-block px-2.5 py-0.5 rounded-md bg-bg-hover border border-border-strong text-[10px] font-bold text-text-dim tracking-widest uppercase font-display mb-2">
+                          {isMCQ ? "Multiple Choice" : "Descriptive"}
+                        </span>
+                        <h3 className="text-[15px] font-bold text-white leading-relaxed">
+                          {question.question_text}
+                        </h3>
+                      </div>
+                    </div>
+                    
+                    <div className="flex flex-col items-start sm:items-end gap-1 shrink-0 ml-13 sm:ml-0">
+                      <span className="text-[10px] font-bold text-text-dim uppercase tracking-widest font-display">Score Achieved</span>
+                      <span className="font-display font-extrabold text-[18px] text-white bg-bg-hover px-3 py-1.5 rounded-lg border border-border-strong">
+                        {score} <span className="text-[13px] text-text-dim font-medium">/ {question.max_marks}</span>
+                      </span>
                     </div>
                   </div>
-                  <div className="rv-q-score">
-                    <div className="rv-q-score-label">Score</div>
-                    <div className="rv-q-score-val">
-                      {score} <span className="rv-q-score-max">/ {question.max_marks}</span>
+
+                  {/* Question Reference Image */}
+                  {question.image_url && (
+                    <div className="p-4 bg-bg-primary border-b border-border-strong flex justify-center">
+                      <img src={question.image_url} alt="Question Reference" className="max-h-[250px] w-auto object-contain rounded-lg border border-border-strong" />
                     </div>
-                  </div>
-                </div>
-                {question.image_url && (
-                  <div className="rv-q-image">
-                    <img src={question.image_url} alt="Question Reference" style={{ maxHeight: 280, width: "auto", objectFit: "contain", display: "block" }} />
-                  </div>
-                )}
-              </div>
+                  )}
 
-              {/* ── MCQ body ── */}
-              {isMCQ ? (
-                <div className="rv-mcq-body">
-                  {question.mcq_options?.map((option, optIdx) => {
-                    const studentChoice = studentAnswer?.mcq_selected?.trim();
-                    const correctAnswer = question.mcq_answer?.trim();
-                    const currentOption = option?.trim();
-                    const isSelected = studentChoice === currentOption;
-                    const isCorrect = correctAnswer === currentOption;
+                  {/* ── MCQ Body ── */}
+                  {isMCQ ? (
+                    <div className="p-6 bg-bg-primary flex flex-col gap-4">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                        {question.mcq_options?.map((option, optIdx) => {
+                          const studentChoice = studentAnswer?.mcq_selected?.trim();
+                          const correctAnswer = question.mcq_answer?.trim();
+                          const currentOption = option?.trim();
+                          
+                          const isSelected = studentChoice === currentOption;
+                          const isCorrect = correctAnswer === currentOption;
 
-                    let optClass = "rv-option-default";
-                    let letterClass = "rv-option-letter-default";
-                    let textClass = "rv-option-text-default";
-                    let badge = null;
-                    let icon = null;
+                          let containerClasses = "bg-bg-secondary border-border-strong text-text-secondary opacity-70";
+                          let badge = null;
 
-                    if (isSelected && isCorrect) {
-                      optClass = "rv-option-correct-selected";
-                      letterClass = "rv-option-letter-active";
-                      textClass = "rv-option-text-active";
-                      badge = <span className="rv-option-badge rv-badge-correct-selected">Your Answer · Correct</span>;
-                      icon = <CheckCircle2 size={16} color="var(--emerald)" />;
-                    } else if (isSelected && !isCorrect) {
-                      optClass = "rv-option-wrong-selected";
-                      letterClass = "rv-option-letter-active";
-                      textClass = "rv-option-text-active";
-                      badge = <span className="rv-option-badge rv-badge-wrong">Your Answer · Wrong</span>;
-                      icon = <XCircle size={16} color="#ef4444" />;
-                    } else if (!isSelected && isCorrect) {
-                      optClass = "rv-option-correct-unselected";
-                      letterClass = "rv-option-letter-active";
-                      textClass = "rv-option-text-active";
-                      badge = <span className="rv-option-badge rv-badge-correct-hint">Correct Answer</span>;
-                      icon = <CheckCircle2 size={16} color="var(--emerald)" style={{ opacity: .7 }} />;
-                    }
+                          if (isSelected && isCorrect) {
+                            containerClasses = "bg-teal-400/10 border-teal-400 text-teal-400 shadow-[0_0_15px_rgba(52,211,153,0.15)]";
+                            badge = <span className="flex items-center gap-1 text-[11px] font-bold font-display uppercase tracking-widest text-teal-400 shrink-0"><CheckCircle2 size={13} className="shrink-0"/> Correct</span>;
+                          } else if (isSelected && !isCorrect) {
+                            containerClasses = "bg-red-500/10 border-red-500 text-red-500 shadow-[0_0_15px_rgba(239,68,68,0.15)]";
+                            badge = <span className="flex items-center gap-1 text-[11px] font-bold font-display uppercase tracking-widest text-red-500 shrink-0"><XCircle size={13} className="shrink-0"/> Wrong</span>;
+                          } else if (!isSelected && isCorrect) {
+                            containerClasses = "bg-teal-400/5 border-teal-400/50 text-white";
+                            badge = <span className="flex items-center gap-1 text-[11px] font-bold font-display uppercase tracking-widest text-teal-400/70 shrink-0">Correct Answer</span>;
+                          }
 
-                    return (
-                      <div key={optIdx} className={`rv-option ${optClass}`}>
-                        <div className="rv-option-left">
-                          <span className={`rv-option-letter ${letterClass}`}>{String.fromCharCode(65 + optIdx)}</span>
-                          <span className={`rv-option-text ${textClass}`}>{option}</span>
+                          return (
+                            <div key={optIdx} className={`flex items-center justify-between gap-3 p-4 rounded-xl border transition-all ${containerClasses}`}>
+                              <div className="flex items-center gap-3 overflow-hidden">
+                                <span className={`flex items-center justify-center w-6 h-6 rounded border text-[11px] font-bold font-display shrink-0 ${isSelected || isCorrect ? 'border-current bg-current/20' : 'border-border-strong bg-bg-primary'}`}>
+                                  {String.fromCharCode(65 + optIdx)}
+                                </span>
+                                <span className="text-[14px] font-medium truncate">{option}</span>
+                              </div>
+                              {badge && badge}
+                            </div>
+                          );
+                        })}
+                      </div>
+
+                      {question.mcq_explanation && (
+                        <div className="mt-4 bg-amber-400/10 border border-amber-400/20 rounded-xl p-5">
+                          <h4 className="flex items-center gap-2 text-[11px] font-bold text-amber-400 uppercase tracking-widest font-display mb-2">
+                            <Lightbulb size={14} className="shrink-0" /> Explanation
+                          </h4>
+                          <p className="text-[13.5px] text-amber-400/80 leading-relaxed">{question.mcq_explanation}</p>
                         </div>
-                        {(badge || icon) && (
-                          <div className="rv-option-right">
-                            {badge}
-                            {icon}
+                      )}
+                    </div>
+                  ) : (
+                    /* ── Descriptive Body ── */
+                    <div className="grid grid-cols-1 lg:grid-cols-2 divide-y lg:divide-y-0 lg:divide-x divide-border-strong">
+                      
+                      {/* Left: Student Response */}
+                      <div className="p-6 bg-bg-secondary flex flex-col">
+                        <div className="flex items-center gap-2 mb-4">
+                          <User size={15} className="text-brand-400 shrink-0" /> 
+                          <h4 className="font-display text-[12px] font-bold text-text-dim uppercase tracking-[0.15em]">Your Response</h4>
+                        </div>
+                        
+                        {!studentAnswer ? (
+                          <div className="flex items-center justify-center h-full min-h-[120px] bg-bg-primary border border-dashed border-border-strong rounded-xl text-[13px] text-text-dim italic gap-2">
+                            <AlertCircle size={15} className="shrink-0" /> No answer submitted.
+                          </div>
+                        ) : (
+                          <div className="flex-1 flex flex-col gap-4">
+                            {studentAnswer.ocr_text && (
+                              <div className="bg-bg-primary border border-border-strong rounded-xl p-4 text-[14px] text-text-secondary font-medium leading-relaxed italic border-l-4 border-l-brand-400 shadow-inner">
+                                "{studentAnswer.ocr_text}"
+                              </div>
+                            )}
+                            
+                            {filesArray.map((url, fIdx) => (
+                              isImage(url) ? (
+                                <div key={fIdx} className="rounded-xl overflow-hidden border border-border-strong bg-bg-primary p-2">
+                                  <img src={url} alt={`Submission part ${fIdx + 1}`} className="w-full h-auto rounded-lg block" />
+                                </div>
+                              ) : (
+                                <a key={fIdx} href={url} target="_blank" rel="noreferrer" className="flex items-center gap-4 p-4 rounded-xl border border-border-strong bg-bg-primary hover:border-brand-400 transition-colors group">
+                                  <div className="w-11 h-11 rounded-lg bg-brand-400/10 flex items-center justify-center text-brand-400 group-hover:bg-brand-400 group-hover:text-white transition-colors shrink-0">
+                                    <FileText size={18} className="shrink-0" />
+                                  </div>
+                                  <div>
+                                    <div className="text-[14px] font-bold text-white mb-0.5">View Uploaded Document</div>
+                                    <div className="text-[12px] text-text-dim">Opens in new tab</div>
+                                  </div>
+                                </a>
+                              )
+                            ))}
                           </div>
                         )}
                       </div>
-                    );
-                  })}
 
-                  {question.mcq_explanation && (
-                    <div className="rv-explanation-border">
-                      <div className="rv-section-label">
-                        <Lightbulb size={13} color="var(--amber)" /> Explanation
-                      </div>
-                      <div className="rv-explanation">{question.mcq_explanation}</div>
-                    </div>
-                  )}
-                </div>
-              ) : (
-                /* ── Descriptive body ── */
-                <div className="rv-desc-body">
-                  <div className="rv-desc-grid">
+                      {/* Right: AI + Teacher Feedback */}
+                      <div className="p-6 bg-bg-primary flex flex-col gap-6">
+                        
+                        {/* 👨‍🏫 Local Answer Teacher Override Banner */}
+                        {hasTeacherNote && (
+                          <div className="bg-brand-400/10 border border-brand-400/30 rounded-xl p-4 shadow-sm">
+                            <h4 className="flex items-center gap-2 text-[11px] font-bold text-brand-400 uppercase tracking-widest font-display mb-2">
+                              <Award size={14} className="shrink-0" /> Instructor Remarks
+                            </h4>
+                            <p className="text-[13.5px] text-brand-400/90 italic leading-relaxed">
+                              "{studentAnswer.teacher_feedback}"
+                            </p>
+                          </div>
+                        )}
 
-                    {/* Left: Student response */}
-                    <div>
-                      <div className="rv-section-label">
-                        <User size={13} color="var(--txt-3)" /> Your Response
-                      </div>
-                      {!studentAnswer ? (
-                        <div className={`rv-text-box rv-text-box-empty`}>
-                          <AlertCircle size={14} /> No answer submitted.
-                        </div>
-                      ) : (
-                        <>
-                          {studentAnswer.ocr_text && (
-                            <div className="rv-text-box rv-text-box-default">"{studentAnswer.ocr_text}"</div>
-                          )}
-                          {studentAnswer.file_url && (
-                            isImage(studentAnswer.file_url) ? (
-                              <div style={{ borderRadius: "var(--r-md)", overflow: "hidden", border: "1px solid var(--border-hi)", padding: 4, background: "var(--bg-panel)", marginTop: 10 }}>
-                                <img src={studentAnswer.file_url} alt="Your submission" style={{ width: "100%", height: "auto", borderRadius: "var(--r-sm)", display: "block" }} />
-                              </div>
-                            ) : (
-                              <a href={studentAnswer.file_url} target="_blank" rel="noreferrer" className="rv-file-link">
-                                <div className="rv-file-icon"><FileText size={16} color="var(--brand)" /></div>
+                        {/* AI Detailed Feedback Lists */}
+                        {studentAnswer && (
+                          <div>
+                            <div className="flex items-center gap-2 mb-4">
+                              <Bot size={15} className="text-teal-400 shrink-0" /> 
+                              <h4 className="font-display text-[12px] font-bold text-text-dim uppercase tracking-[0.15em]">AI Evaluation</h4>
+                            </div>
+
+                            <div className="flex flex-col gap-5">
+                              {studentAnswer.strengths?.length > 0 && (
                                 <div>
-                                  <div className="rv-file-title">View Uploaded Document</div>
-                                  <div className="rv-file-sub">Opens in new tab</div>
+                                  <h5 className="text-[10px] font-bold text-teal-400 uppercase tracking-widest font-display mb-2">Strengths</h5>
+                                  <ul className="flex flex-col gap-2">
+                                    {studentAnswer.strengths.map((s, i) => (
+                                      <li key={i} className="flex items-start gap-2.5 text-[13.5px] text-text-secondary leading-snug">
+                                         <CheckCircle2 size={16} className="text-teal-400 shrink-0 mt-0.5" />
+                                         <span>{s}</span>
+                                      </li>
+                                    ))}
+                                  </ul>
                                 </div>
-                              </a>
-                            )
-                          )}
-                        </>
-                      )}
-                    </div>
+                              )}
 
-                    {/* Right: AI + Teacher feedback */}
-                    <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
-                      {studentAnswer?.ai_feedback && (
-                        <div>
-                          <div className="rv-section-label">
-                            <Bot size={13} color="var(--emerald)" /> AI Evaluation
-                          </div>
-                          <div className="rv-text-box rv-text-box-ai">{studentAnswer.ai_feedback}</div>
-                        </div>
-                      )}
-                      {hasTeacherNote && (
-                        <div>
-                          <div className="rv-section-label" style={{ color: "var(--brand)" }}>
-                            <Award size={13} color="var(--brand)" /> Instructor Remarks
-                          </div>
-                          <div className="rv-text-box rv-text-box-teacher">{studentAnswer.teacher_feedback}</div>
-                        </div>
-                      )}
-                    </div>
-                  </div>
+                              {studentAnswer.weaknesses?.length > 0 && (
+                                <div>
+                                  <h5 className="text-[10px] font-bold text-red-400 uppercase tracking-widest font-display mb-2">Areas for Improvement</h5>
+                                  <ul className="flex flex-col gap-2">
+                                    {studentAnswer.weaknesses.map((w, i) => (
+                                      <li key={i} className="flex items-start gap-2.5 text-[13.5px] text-text-secondary leading-snug">
+                                         <XCircle size={16} className="text-red-400 shrink-0 mt-0.5" />
+                                         <span>{w}</span>
+                                      </li>
+                                    ))}
+                                  </ul>
+                                </div>
+                              )}
 
-                  {/* Model answer */}
-                  {question.model_answer && (
-                    <div className="rv-model-section">
-                      <div className="rv-section-label">
-                        <CheckCircle2 size={13} color="var(--emerald)" /> Model Answer
+                              {studentAnswer.missing_concepts?.length > 0 && (
+                                <div>
+                                  <h5 className="text-[10px] font-bold text-amber-400 uppercase tracking-widest font-display mb-2">Missing Concepts</h5>
+                                  <ul className="flex flex-col gap-2">
+                                    {studentAnswer.missing_concepts.map((m, i) => (
+                                      <li key={i} className="flex items-start gap-2.5 text-[13.5px] text-text-secondary leading-snug">
+                                         <TriangleAlert size={16} className="text-amber-400 shrink-0 mt-0.5" />
+                                         <span>{m}</span>
+                                      </li>
+                                    ))}
+                                  </ul>
+                                </div>
+                              )}
+
+                              {/* Fallback AI Feedback Text */}
+                              {!studentAnswer.strengths?.length && !studentAnswer.weaknesses?.length && !studentAnswer.missing_concepts?.length && studentAnswer.ai_feedback && (
+                                 <div className="text-[13.5px] text-text-secondary leading-relaxed bg-bg-secondary p-4 rounded-xl border border-border-strong">
+                                   {studentAnswer.ai_feedback}
+                                 </div>
+                              )}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Model Answer Ref */}
+                        {question.model_answer && (
+                          <div className="mt-auto pt-5 border-t border-border-strong">
+                            <h4 className="flex items-center gap-2 text-[11px] font-bold text-text-dim uppercase tracking-[0.15em] mb-2 font-display">
+                              <CheckCircle2 size={13} className="text-emerald-400 shrink-0" /> Ideal Model Answer
+                            </h4>
+                            <p className="text-[13px] text-text-secondary leading-relaxed bg-teal-400/5 border border-teal-400/20 p-4 rounded-xl italic">
+                              {question.model_answer}
+                            </p>
+                          </div>
+                        )}
                       </div>
-                      <div className="rv-text-box rv-text-box-model">{question.model_answer}</div>
+
                     </div>
                   )}
                 </div>
-              )}
-            </div>
-          );
-        })}
+              );
+            })}
+          </div>
+
+        </div>
       </main>
     </div>
   );

@@ -13,12 +13,7 @@ export const AssignmentRepository = {
     return await prisma.assignment.create({
       data: {
         teacher_id: teacherId,
-        title,
-        type,
-        department, 
-        year,       
-        batch,      
-        subject,
+        title, type, department, year, batch, subject,
         start_time: new Date(start_time),
         end_time: new Date(end_time),
         release_marks_at: new Date(release_marks_at),
@@ -29,17 +24,35 @@ export const AssignmentRepository = {
             mcq_options: q.mcq_options || null,
             mcq_answer: q.mcq_answer || null,
             mcq_explanation: q.mcq_explanation || null,
-            
-            // 🌟 THE UPGRADE: Added image_url and model_answer (removed rubric_json)
             image_url: q.image_url || null,
-            model_answer: q.model_answer || null
+            model_answer: q.model_answer || null // 🌟 Teacher's Model Answer saved here!
           }))
         }
       },
-      include: {
-        questions: true 
+      include: { questions: true }
+    });
+  },
+
+  // 🌟 NEW: Safely handles the pgvector insertion!
+  async addAssignmentMaterial(assignmentId, type, content, embeddingArray) {
+    // 1. Create the record normally with Prisma
+    const material = await prisma.assignmentMaterial.create({
+      data: {
+        assignment_id: assignmentId,
+        type: type,
+        content: content
       }
     });
+
+    // 2. Inject the Vector embedding using raw SQL 
+    const embeddingString = `[${embeddingArray.join(',')}]`;
+    await prisma.$executeRaw`
+      UPDATE "assignment_materials"
+      SET embedding = ${embeddingString}::vector
+      WHERE id = ${material.id}::uuid
+    `;
+
+    return material;
   },
 
 async getAssignmentsForStudent(department, year, batch, studentId) {

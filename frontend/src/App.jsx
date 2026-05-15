@@ -18,9 +18,16 @@ import SubmissionReview from "./pages/SubmissionReview";
 import ResultsView from "./pages/ResultsView";
 import GenerateQuestionsView from "./pages/GenerateQuestionsView";
 import Home from "./pages/Home";
+import Profile from "./pages/Profile";
 
-// Placeholders for subsequent views
 // Role-Based Route Guards
+const PrivateRoute = ({ children }) => {
+  const { user, isLoading } = useAuth();
+  if (isLoading) return <div className="min-h-screen bg-bg-secondary"></div>;
+  if (!user) return <Navigate to="/auth" replace />;
+  return children;
+};
+
 const TeacherRoute = ({ children }) => {
   const { user, role, isLoading } = useAuth();
   if (isLoading) return <div className="min-h-screen bg-bg-secondary"></div>;
@@ -62,6 +69,16 @@ function App() {
           {/* Public Routes */}
           <Route path="/" element={<Home />} />
           <Route path="/auth" element={<Auth />} />
+          
+          {/* Shared Authenticated Routes */}
+          <Route
+            path="/profile"
+            element={
+              <PrivateRoute>
+                <Profile />
+              </PrivateRoute>
+            }
+          />
 
           {/* Teacher Routes */}
           <Route
@@ -114,8 +131,6 @@ function App() {
               </StudentRoute>
             }
           />
-
-          {/* <-- Updated Route using TakeTest --> */}
           <Route
             path="/student/assignments/:id"
             element={
@@ -124,7 +139,6 @@ function App() {
               </StudentRoute>
             }
           />
-
           <Route
             path="/student/results/:id"
             element={

@@ -3,8 +3,7 @@ import { apiKeyManager } from '../utils/keyManager.js';
 
 const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
-// 🌟 ADDED 'question' AS THE FIRST PARAMETER
-export const llmAgent = async (question, studentAnswer, modelAnswer, maxMarks) => {
+export const llmAgent = async (question, studentAnswer, modelAnswer, maxMarks, courseContext) => {
   console.log("-> [LLM Agent] Asking Gemini for detailed evaluation...");
   
   const prompt = `
@@ -13,20 +12,24 @@ export const llmAgent = async (question, studentAnswer, modelAnswer, maxMarks) =
     REFERENCE MATERIAL:
     - Question Asked: "${question}"
     - Teacher's Gold Standard Answer: "${modelAnswer || 'No model answer provided. Grade based on absolute factual accuracy.'}"
+    - Course Syllabus / Context: "${courseContext || 'Standard academic principles apply.'}"
     - Maximum Possible Marks: ${maxMarks}
     
     STUDENT'S SUBMISSION:
     "${studentAnswer}"
 
     YOUR TASK:
-    Evaluate the student's answer against the Gold Standard to see if they accurately answered the specific Question Asked. Be objective. Do not penalize for poor grammar if the technical concepts are correct.
+    Evaluate the student's answer against the Gold Standard and the Course Syllabus. 
     
-    You must return a single JSON object. The "feedback" string MUST be formatted using Markdown bullet points for readability.
-
     REQUIRED JSON FORMAT:
     {
       "score": <number between 0 and ${maxMarks}, allow decimals like 3.5>,
-      "feedback": "Use exactly this structure:\\n\\n**✅ Strengths:**\\n* [Point 1]\\n* [Point 2]\\n\\n**❌ Missing Concepts:**\\n* [Point 1]\\n* [Point 2]\\n\\n**📈 How to Improve:**\\n* [Actionable advice]"
+      "feedback": "Write a 2-sentence encouraging summary.",
+      "strengths": ["point 1", "point 2"],
+      "weaknesses": ["point 1", "point 2"],
+      "missingConcepts": ["concept 1 from syllabus", "concept 2 from model answer"],
+      "evalConfidence": <number 0-100 based on how sure you are of this grade>,
+      "flagged": <boolean true if the answer is complete nonsense, off-topic, or suspicious>
     }
     
     IMPORTANT: Output ONLY the raw JSON object. Do not wrap it in \`\`\`json markdown blocks.
@@ -40,7 +43,7 @@ export const llmAgent = async (question, studentAnswer, modelAnswer, maxMarks) =
       const ai = new GoogleGenAI({ apiKey: currentKey });
 
       const response = await ai.models.generateContent({
-        model: "gemini-2.5-flash",
+        model: "gemini-2.5-flash", // 🌟 Kept your original model!
         contents: prompt,
       });
 
@@ -61,7 +64,11 @@ export const llmAgent = async (question, studentAnswer, modelAnswer, maxMarks) =
       
       if (attempt === maxAttempts) {
         console.error("-> [LLM Agent] All keys exhausted.");
-        return { score: 0, feedback: "⚠️ **Evaluation Error:** The AI grading servers are currently overloaded. Your teacher will review this manually." };
+        return { 
+          score: 0, 
+          feedback: "⚠️ Evaluation Error: AI servers overloaded.",
+          strengths: [], weaknesses: [], missingConcepts: [], evalConfidence: 0, flagged: true
+        };
       }
     }
   }

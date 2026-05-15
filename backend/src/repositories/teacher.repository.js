@@ -6,68 +6,51 @@ export const TeacherRepository = {
   async getDashboardOverview(teacherId, searchQuery = "") {
     const now = new Date();
 
-    // KPI 1: Active Assignments (Deadline in the future)
     const activeAssignments = await prisma.assignment.count({
-      where: {
-        teacher_id: teacherId,
-        end_time: { gt: now },
-      },
+      where: { teacher_id: teacherId, end_time: { gt: now } },
     });
 
-    // KPI 2: Pending Evaluations (Submissions waiting for AI or Teacher)
     const pendingEvaluations = await prisma.submission.count({
-      where: {
-        assignment: { teacher_id: teacherId },
-        status: "PENDING",
-      },
+      where: { assignment: { teacher_id: teacherId }, status: "PROCESSING" }, // 🌟 Updated status
     });
 
-    // KPI 3: Average Class Performance (%)
+    // 🌟 NEW KPI: Submissions that the AI flagged for Plagiarism or Low Confidence
+    const flaggedEvaluations = await prisma.submission.count({
+      where: { assignment: { teacher_id: teacherId }, requires_review: true },
+    });
+
     const gradedSubmissions = await prisma.submission.findMany({
-      where: {
-        assignment: { teacher_id: teacherId },
-        status: "GRADED",
-      },
-      include: {
-        assignment: { include: { questions: true } },
-      },
+      where: { assignment: { teacher_id: teacherId }, status: "GRADED" },
+      include: { assignment: { include: { questions: true } } },
     });
 
     let totalPercentage = 0;
     if (gradedSubmissions.length > 0) {
       gradedSubmissions.forEach((sub) => {
-        // Calculate max possible marks for the assignment
-        const maxMarks = sub.assignment.questions.reduce(
-          (sum, q) => sum + q.max_marks,
-          0,
-        );
+        const maxMarks = sub.assignment.questions.reduce((sum, q) => sum + q.max_marks, 0);
         const score = sub.total_score || 0;
         const percentage = maxMarks > 0 ? (score / maxMarks) * 100 : 0;
         totalPercentage += percentage;
       });
     }
-    const avgPerformance =
-      gradedSubmissions.length > 0
+    const avgPerformance = gradedSubmissions.length > 0
         ? Math.round(totalPercentage / gradedSubmissions.length)
         : 0;
 
-    // 4. The Recent Assignments List (with Search Support!)
     const recentAssignments = await prisma.assignment.findMany({
       where: {
         teacher_id: teacherId,
-        // If a search query is passed, filter by title
         title: { contains: searchQuery, mode: "insensitive" },
       },
       orderBy: { created_at: "desc" },
-      take: 10, // Keep the dashboard clean, show latest 10
-      include: {
-        _count: { select: { submissions: true } },
-      },
+      take: 10,
+      include: { _count: { select: { submissions: true } } },
     });
 
     return {
       activeAssignments,
       pendingEvaluations,
+      flaggedEvaluations, // 🌟 Added to dashboard
       avgPerformance,
       recentAssignments,
     };
@@ -82,6 +65,7 @@ export const TeacherRepository = {
         submissions: {
           include: {
             student: { select: { name: true, email: true } },
+            // 🌟 NEW: Include the requires_review flag so UI can show a red warning badge
           },
         },
       },
@@ -89,16 +73,9 @@ export const TeacherRepository = {
 
     if (!assignment) return null;
 
-    // Calculate aggregate stats
-    const gradedSubmissions = assignment.submissions.filter(
-      (s) => s.status === "GRADED",
-    );
-    const averageScore =
-      gradedSubmissions.length > 0
-        ? gradedSubmissions.reduce(
-            (acc, curr) => acc + (curr.total_score || 0),
-            0,
-          ) / gradedSubmissions.length
+    const gradedSubmissions = assignment.submissions.filter((s) => s.status === "GRADED");
+    const averageScore = gradedSubmissions.length > 0
+        ? gradedSubmissions.reduce((acc, curr) => acc + (curr.total_score || 0), 0) / gradedSubmissions.length
         : 0;
 
     const totalMarks = assignment.questions.reduce((sum, q) => sum + (q.max_marks || 0), 0);
@@ -119,6 +96,7 @@ export const TeacherRepository = {
       stats: {
         totalSubmissions: assignment.submissions.length,
         gradedSubmissions: gradedSubmissions.length,
+        flaggedSubmissions: assignment.submissions.filter(s => s.requires_review).length, // 🌟 NEW stat
         averageScore: averageScore.toFixed(2),
       },
       submissions: assignment.submissions,
@@ -130,43 +108,55 @@ export const TeacherRepository = {
     return await prisma.submission.findUnique({
       where: { id: submissionId },
       include: {
-        student: { select: { name: true, email: true } },
+        student: { select: { name: true, email: true, university_roll: true } },
         answers: {
           include: {
-            question: true, // Include the question to show the teacher what was asked!
+            question: true, 
           },
         },
+        // 🌟 NEW: Fetch the plagiarism reports for the side-by-side view!
+        plagiarism_reports: {
+          include: {
+            matched_submission: {
+              include: { student: { select: { name: true } } }
+            }
+          }
+        }
       },
     });
   },
 
   // 4. THE OVERRIDE ENGINE: Let a teacher manually change a grade
- async overrideAnswerScore(submissionId, answerId, newScore, teacherFeedback) {
-    // A. Update the specific answer (Using the newly optimized flat columns!)
+  async overrideAnswerScore(submissionId, answerId, newScore, teacherFeedback) {
+    
+    // A. Update the specific answer and REMOVE the flag
     const updatedAnswer = await prisma.answer.update({
       where: { id: answerId },
       data: {
         score: newScore,
-        // 🌟 FIX: Directly assign the string instead of wrapping it in a JSON object
-        teacher_feedback: teacherFeedback, 
+        teacher_feedback: teacherFeedback,
+        flagged: false, // 🌟 FIX: The teacher checked it, so it's no longer flagged!
       },
     });
 
     // B. Recalculate the Total Score for the entire Submission
     const allAnswers = await prisma.answer.findMany({
       where: { submission_id: submissionId },
-      select: { score: true } // Optimization: Only fetch the scores to save memory
+      select: { score: true, flagged: true } 
     });
 
-    const newTotalScore = allAnswers.reduce(
-      (acc, curr) => acc + (curr.score || 0),
-      0,
-    );
+    const newTotalScore = allAnswers.reduce((acc, curr) => acc + (curr.score || 0), 0);
+    
+    // 🌟 FIX: Check if there are any OTHER answers still flagged in this submission
+    const stillNeedsReview = allAnswers.some(ans => ans.flagged === true);
 
-    // C. Save the new total score
+    // C. Save the new total score and update the global review status
     await prisma.submission.update({
       where: { id: submissionId },
-      data: { total_score: newTotalScore },
+      data: { 
+        total_score: newTotalScore,
+        requires_review: stillNeedsReview // 🌟 Clears the dashboard warning if all flags are resolved
+      },
     });
 
     return { newTotalScore, updatedAnswer };

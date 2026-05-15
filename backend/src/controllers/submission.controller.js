@@ -1,12 +1,15 @@
 import { SubmissionRepository } from '../repositories/submission.repository.js';
 import { McqEvaluationService } from '../services/mcq.evaluator.js';
 import { AiEvaluationService } from '../services/ai.evaluator.js';
+import { sendMailAsync } from '../services/mail.service.js'; // 🌟 ADD
+import { submissionConfirmationTemplate } from '../services/mail.templates.js'; // 🌟 ADD
 
 export const SubmitController = {
   async handleSubmission(req, res) {
     try {
       const { assignmentId, answers } = req.body; 
       const studentId = req.user.id; 
+      const studentEmail = req.user.email;
 
       if (!assignmentId || !answers || answers.length === 0) {
         return res.status(400).json({ error: "Missing assignment ID or answers." });
@@ -34,6 +37,12 @@ export const SubmitController = {
         assignmentId, 
         answers
       );
+
+      sendMailAsync({
+        to: studentEmail,
+        subject: `Submission Received: ${assignment.title}`,
+        html: submissionConfirmationTemplate(assignment.title)
+      });
 
       // 3. ROUTE TO THE CORRECT PIPELINE
       if (assignment.type === 'MCQ') {

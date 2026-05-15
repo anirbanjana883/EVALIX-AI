@@ -4,7 +4,8 @@ import { useAuth } from '../context/AuthContext';
 import { supabase } from '../lib/supabase';
 import { 
   Loader2, Clock, AlertCircle, UploadCloud, 
-  CheckCircle2, File as FileIcon, X, Send
+  CheckCircle2, File as FileIcon, X, Send, BrainCircuit,
+  ImagePlus
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
@@ -21,7 +22,9 @@ const TakeTest = () => {
   const [uploadProgress, setUploadProgress] = useState('');
   const [error, setError] = useState(null);
   
-  // Format: { [questionId]: "Option A" } OR { [questionId]: FileObject }
+  // Format: 
+  // MCQ: { [questionId]: "Option A" } 
+  // Descriptive: { [questionId]: [FileObject1, FileObject2] }
   const [answers, setAnswers] = useState({});
   const [timeLeft, setTimeLeft] = useState('');
 
@@ -60,7 +63,11 @@ const TakeTest = () => {
       if (distance <= 0) {
         clearInterval(timer);
         setTimeLeft('Time Expired');
-        // Optional: Auto-trigger handleSubmit here if distance === 0
+        // Auto-submit if time runs out
+        if (!isSubmitting && assignment) {
+            toast.error("Time expired! Auto-submitting your test.");
+            handleSubmit(); 
+        }
       } else {
         const h = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
         const m = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
@@ -70,33 +77,55 @@ const TakeTest = () => {
     }, 1000);
 
     return () => clearInterval(timer);
-  }, [assignment]);
+  }, [assignment, isSubmitting]);
 
   // --- 3. Input Handlers ---
   const handleMcqSelect = (questionId, option) => {
     setAnswers(prev => ({ ...prev, [questionId]: option }));
   };
 
-  const handleFileSelect = (questionId, file) => {
-    if (file.size > 5 * 1024 * 1024) {
-      return toast.error('File size must be under 5MB.');
+  const handleMultipleFilesSelect = (questionId, newFiles) => {
+    const filesArray = Array.from(newFiles);
+    
+    // Validate file sizes
+    const invalidFile = filesArray.find(f => f.size > 5 * 1024 * 1024);
+    if (invalidFile) {
+      return toast.error('One or more files exceed the 5MB limit.');
     }
-    setAnswers(prev => ({ ...prev, [questionId]: file }));
+
+    setAnswers(prev => {
+      const currentFiles = prev[questionId] || [];
+      const updatedFiles = [...currentFiles, ...filesArray];
+      
+      // Enforce the 5 file limit mentioned in your upload.routes.js
+      if (updatedFiles.length > 5) {
+        toast.error('You can only upload up to 5 images per question.');
+        return { ...prev, [questionId]: updatedFiles.slice(0, 5) };
+      }
+      
+      return { ...prev, [questionId]: updatedFiles };
+    });
   };
 
-  const removeFile = (questionId) => {
+  const removeSpecificFile = (questionId, indexToRemove) => {
     setAnswers(prev => {
+      const currentFiles = prev[questionId] || [];
+      const updatedFiles = currentFiles.filter((_, idx) => idx !== indexToRemove);
+      
       const newAnswers = { ...prev };
-      delete newAnswers[questionId];
+      if (updatedFiles.length === 0) {
+        delete newAnswers[questionId];
+      } else {
+        newAnswers[questionId] = updatedFiles;
+      }
       return newAnswers;
     });
   };
 
-  // --- 4. The "Two-Step Dance" Submission Logic ---
+  // --- 4. The Submission Logic (Multiple Image Support) ---
   const handleSubmit = async () => {
-    // Validation
     const answeredCount = Object.keys(answers).length;
-    if (answeredCount < assignment.questions.length) {
+    if (answeredCount < assignment.questions.length && timeLeft !== 'Time Expired') {
       const proceed = window.confirm(`You have only answered ${answeredCount}/${assignment.questions.length} questions. Submit anyway?`);
       if (!proceed) return;
     }
@@ -109,26 +138,36 @@ const TakeTest = () => {
 
       // Step 1: Upload Images (If Descriptive)
       if (assignment.type === 'DESCRIPTIVE') {
-        const totalFiles = Object.keys(answers).length;
-        let uploaded = 0;
+        const questionsWithAnswers = Object.entries(answers);
+        let completedQuestions = 0;
 
-        for (const [qId, file] of Object.entries(answers)) {
-          setUploadProgress(`Uploading file ${uploaded + 1} of ${totalFiles}...`);
+        for (const [qId, files] of questionsWithAnswers) {
+          setUploadProgress(`Uploading files for question ${completedQuestions + 1} of ${questionsWithAnswers.length}...`);
           
           const formData = new FormData();
-          formData.append('examFile', file);
+          // Append all files for this specific question to 'examFiles'
+          files.forEach(file => {
+            formData.append('examFiles', file); 
+          });
 
+          // Call your updated upload endpoint
           const uploadRes = await fetch(`${API_URL}/api/upload`, {
             method: 'POST',
-            headers: { 'Authorization': `Bearer ${session.access_token}` }, // Notice NO 'Content-Type', fetch sets boundary automatically for FormData
+            headers: { 'Authorization': `Bearer ${session.access_token}` },
             body: formData
           });
 
-          if (!uploadRes.ok) throw new Error(`Failed to upload file for question ${uploaded + 1}`);
+          if (!uploadRes.ok) throw new Error(`Failed to upload images for question ${completedQuestions + 1}`);
           
           const uploadData = await uploadRes.json();
-          finalAnswers.push({ questionId: qId, fileUrl: uploadData.fileUrl });
-          uploaded++;
+          
+          // Push to final array using the new 'fileUrls' array structure
+          finalAnswers.push({ 
+            questionId: qId, 
+            fileUrls: uploadData.fileUrls // Make sure your backend upload controller returns 'fileUrls' as an array
+          });
+          
+          completedQuestions++;
         }
       } 
       // Handle MCQ Mapping
@@ -150,7 +189,7 @@ const TakeTest = () => {
         },
         body: JSON.stringify({
           assignmentId: id,
-          answers: finalAnswers
+          answers: finalAnswers // Matches the new required payload perfectly
         })
       });
 
@@ -171,21 +210,21 @@ const TakeTest = () => {
   // --- RENDERING ---
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-bg-secondary flex flex-col items-center justify-center text-text-dim font-sans">
+      <div className="h-screen bg-bg-base flex flex-col items-center justify-center text-text-dim font-sans">
         <Loader2 className="w-10 h-10 animate-spin mb-4 text-brand-400" />
-        <p className="font-medium text-[15px]">Loading secure exam environment...</p>
+        <p className="font-display font-bold text-[14px] text-text-secondary tracking-wide">Initializing secure exam environment...</p>
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="min-h-screen bg-bg-secondary flex flex-col items-center justify-center font-sans p-6">
-        <div className="bg-bg-primary border border-border-subtle rounded-[12px] p-8 max-w-md w-full text-center shadow-card">
-          <AlertCircle className="w-12 h-12 text-danger-600 mx-auto mb-4" />
-          <h2 className="text-xl font-medium text-text-primary mb-2">Error Loading Assessment</h2>
-          <p className="text-text-secondary text-[14px] mb-6">{error}</p>
-          <button onClick={() => navigate('/student-dashboard')} className="px-6 py-2.5 bg-bg-tertiary text-text-primary hover:bg-border-subtle border border-border-strong rounded-[8px] font-medium text-[13px] transition-colors">
+      <div className="h-screen bg-bg-base flex flex-col items-center justify-center font-sans p-6">
+        <div className="bg-bg-secondary border border-border-strong rounded-2xl p-8 max-w-md w-full text-center shadow-sm">
+          <AlertCircle className="w-14 h-14 text-red-500 mx-auto mb-4" />
+          <h2 className="font-display text-[18px] font-bold text-white mb-2">Error Loading Assessment</h2>
+          <p className="text-text-secondary text-[13.5px] mb-6 leading-relaxed">{error}</p>
+          <button onClick={() => navigate('/student-dashboard')} className="px-6 py-3 bg-bg-primary text-white hover:border-brand-400 border border-border-strong rounded-lg font-bold text-[13px] transition-colors font-display w-full">
             Return to Dashboard
           </button>
         </div>
@@ -193,128 +232,158 @@ const TakeTest = () => {
     );
   }
 
-  const isTimeCritical = timeLeft.includes('m ') && parseInt(timeLeft.split('h ')[1]) < 10; // Less than 10 mins
+  const isTimeCritical = timeLeft.includes('m ') && parseInt(timeLeft.split('h ')[1] || "0") < 10 && !timeLeft.includes('Time Expired');
 
   return (
-    <div className="min-h-screen bg-bg-secondary text-text-primary font-sans pb-32">
+    <div className="h-screen bg-bg-base text-text-primary font-sans flex flex-col overflow-hidden selection:bg-brand-400/30 selection:text-white">
       
-      {/* Distraction-Free Header */}
-      <header className="bg-bg-primary border-b border-border-subtle sticky top-0 z-20 shadow-sm">
-        <div className="max-w-4xl mx-auto px-6 py-4 flex flex-col md:flex-row md:items-center justify-between gap-4">
+      {/* ── Distraction-Free Header ── */}
+      <header className="shrink-0 bg-bg-primary/90 backdrop-blur-lg border-b border-border-strong h-[68px] flex items-center justify-between px-6 lg:px-8 z-30">
+        <div className="flex items-center gap-3">
+            <div className="hidden sm:flex w-9 h-9 rounded-full border border-brand-400/30 bg-brand-400/10 items-center justify-center shrink-0">
+              <BrainCircuit size={15} className="text-brand-400" />
+            </div>
           <div>
-            <h1 className="text-xl font-medium tracking-tight mb-1">{assignment.title}</h1>
-            <div className="flex items-center gap-3 text-[13px] text-text-secondary">
-              <span className="px-2 py-0.5 bg-bg-tertiary border border-border-strong rounded-[4px] font-mono text-[11px] uppercase tracking-wider">{assignment.subject}</span>
+            <h1 className="font-display text-[16px] font-bold text-white tracking-wide leading-tight">{assignment.title}</h1>
+            <div className="flex items-center gap-2 mt-0.5 text-text-dim text-[11px] font-display uppercase tracking-widest">
+              <span className="text-brand-400 font-bold">{assignment.subject}</span>
               <span>•</span>
               <span>Secure Environment</span>
             </div>
           </div>
-          
-          <div className={`flex items-center gap-2 px-4 py-2 rounded-[8px] border font-medium text-[14px] ${isTimeCritical ? 'bg-danger-50 border-danger-600/30 text-danger-600 animate-pulse' : 'bg-bg-secondary border-border-strong text-text-primary'}`}>
-            <Clock className="w-4 h-4" />
-            {timeLeft}
-          </div>
+        </div>
+        
+        <div className={`flex items-center gap-2.5 px-4 py-2 rounded-lg border font-bold text-[13px] font-display transition-colors ${isTimeCritical ? 'bg-red-500/10 border-red-500/30 text-red-500 animate-pulse' : 'bg-bg-secondary border-border-strong text-white'}`}>
+          <Clock className="w-4 h-4" />
+          {timeLeft}
         </div>
       </header>
 
-      {/* Main Question Flow */}
-      <main className="max-w-4xl mx-auto px-6 mt-8 space-y-6">
-        {assignment.questions.map((q, index) => (
-          <div key={q.id} className="bg-bg-primary border border-border-subtle rounded-[12px] p-6 sm:p-8 shadow-card">
-            
-            <div className="flex items-start justify-between mb-6">
-              <div className="flex gap-4">
-                <span className="flex-shrink-0 flex items-center justify-center w-8 h-8 rounded-[8px] bg-bg-secondary border border-border-strong text-[14px] font-medium text-text-primary">
-                  {index + 1}
+      {/* ── Scrollable Question Flow ── */}
+      <main className="flex-1 overflow-y-auto w-full custom-scrollbar pb-32">
+        <div className="max-w-4xl mx-auto px-6 mt-8 space-y-6">
+          {assignment.questions.map((q, index) => (
+            <div key={q.id} className="bg-bg-secondary border border-border-strong rounded-2xl p-6 sm:p-8 shadow-sm animate-fade-up" style={{ animationDelay: `${index * 50}ms` }}>
+              
+              <div className="flex items-start justify-between mb-6">
+                <div className="flex gap-4">
+                  <span className="flex-shrink-0 flex items-center justify-center w-9 h-9 rounded-full bg-bg-primary border border-border-strong font-display font-bold text-[14px] text-brand-400 shadow-inner">
+                    {index + 1}
+                  </span>
+                  <p className="font-display text-[16px] font-bold text-white leading-relaxed mt-1">
+                    {q.question_text}
+                  </p>
+                </div>
+                <span className="flex-shrink-0 font-display text-[12px] font-bold text-text-secondary bg-bg-primary px-3 py-1 rounded-md border border-border-strong ml-4 mt-1">
+                  {q.max_marks} pts
                 </span>
-                <p className="text-[16px] text-text-primary leading-relaxed mt-1">
-                  {q.question_text}
-                </p>
               </div>
-              <span className="flex-shrink-0 text-[12px] font-medium text-text-dim ml-4 mt-1">
-                {q.max_marks} Points
-              </span>
-            </div>
 
-            {/* MCQ Render */}
-            {assignment.type === 'MCQ' && (
-              <div className="pl-12 space-y-3">
-                {q.mcq_options.map((option, optIdx) => {
-                  const isSelected = answers[q.id] === option;
-                  return (
-                    <button
-                      key={optIdx}
-                      onClick={() => handleMcqSelect(q.id, option)}
-                      className={`w-full flex items-center gap-4 px-4 py-3 border rounded-[8px] text-left transition-all ${
-                        isSelected 
-                          ? 'bg-brand-900/30 border-brand-400 ring-1 ring-brand-400 text-text-primary' 
-                          : 'bg-bg-secondary border-border-strong text-text-secondary hover:border-text-dim hover:text-text-primary'
-                      }`}
-                    >
-                      <div className={`w-4 h-4 rounded-full border flex items-center justify-center flex-shrink-0 ${isSelected ? 'border-brand-400 bg-brand-400' : 'border-text-dim'}`}>
-                        {isSelected && <div className="w-1.5 h-1.5 rounded-full bg-white" />}
-                      </div>
-                      <span className="text-[15px]">{option}</span>
-                    </button>
-                  );
-                })}
-              </div>
-            )}
+              {/* MCQ Render */}
+              {assignment.type === 'MCQ' && (
+                <div className="pl-13 space-y-3">
+                  {q.mcq_options.map((option, optIdx) => {
+                    const isSelected = answers[q.id] === option;
+                    return (
+                      <button
+                        key={optIdx}
+                        onClick={() => handleMcqSelect(q.id, option)}
+                        className={`w-full flex items-center gap-4 px-5 py-3.5 border rounded-xl text-left transition-all duration-200 cursor-pointer ${
+                          isSelected 
+                            ? 'bg-brand-400/10 border-brand-400 shadow-[0_0_15px_rgba(216,90,48,0.15)] text-white' 
+                            : 'bg-bg-primary border-border-strong text-text-secondary hover:border-text-dim hover:text-white'
+                        }`}
+                      >
+                        <div className={`w-4 h-4 rounded-full border flex items-center justify-center flex-shrink-0 transition-colors ${isSelected ? 'border-brand-400 bg-brand-400' : 'border-text-dim bg-bg-secondary'}`}>
+                          {isSelected && <div className="w-1.5 h-1.5 rounded-full bg-bg-base" />}
+                        </div>
+                        <span className="text-[14px] font-medium leading-snug">{option}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
 
-            {/* Descriptive / Upload Render */}
-            {assignment.type === 'DESCRIPTIVE' && (
-              <div className="pl-12 mt-4">
-                {answers[q.id] ? (
-                  <div className="flex items-center justify-between p-4 bg-brand-900/20 border border-brand-800/50 rounded-[8px]">
-                    <div className="flex items-center gap-3 overflow-hidden">
-                      <div className="p-2 bg-bg-primary rounded-[6px]">
-                        <FileIcon className="w-5 h-5 text-brand-400" />
-                      </div>
-                      <div className="truncate">
-                        <p className="text-[14px] font-medium text-text-primary truncate">{answers[q.id].name}</p>
-                        <p className="text-[12px] text-brand-400 flex items-center gap-1 mt-0.5">
-                          <CheckCircle2 className="w-3 h-3" /> Encrypted & Ready
+              {/* Descriptive / Upload Render */}
+              {assignment.type === 'DESCRIPTIVE' && (
+                <div className="pl-13 mt-4">
+                  {/* Render already uploaded files for this question */}
+                  {answers[q.id] && answers[q.id].length > 0 && (
+                    <div className="flex flex-col gap-3 mb-4">
+                      {answers[q.id].map((file, fileIdx) => (
+                        <div key={fileIdx} className="flex items-center justify-between p-3.5 bg-brand-400/10 border border-brand-400/30 rounded-xl">
+                          <div className="flex items-center gap-3 overflow-hidden">
+                            <div className="p-2.5 bg-bg-primary border border-brand-400/20 rounded-lg">
+                              <FileIcon className="w-5 h-5 text-brand-400" />
+                            </div>
+                            <div className="truncate">
+                              <p className="text-[13.5px] font-bold text-white truncate font-display mb-0.5">
+                                Page {fileIdx + 1}: {file.name}
+                              </p>
+                              <p className="text-[11px] text-brand-400 flex items-center gap-1 font-bold uppercase tracking-widest font-display">
+                                <CheckCircle2 className="w-3.5 h-3.5" /> Ready
+                              </p>
+                            </div>
+                          </div>
+                          <button 
+                            onClick={() => removeSpecificFile(q.id, fileIdx)} 
+                            className="p-2 text-text-dim hover:text-red-500 hover:bg-red-500/10 transition-colors rounded-lg"
+                            title="Remove Image"
+                          >
+                            <X className="w-5 h-5" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Upload Dropzone (Hidden if max 5 files reached) */}
+                  {(!answers[q.id] || answers[q.id].length < 5) && (
+                    <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed border-border-strong rounded-xl bg-bg-primary hover:border-brand-400 hover:bg-brand-400/5 cursor-pointer transition-all group">
+                      <div className="flex flex-col items-center justify-center pt-5 pb-6">
+                        {answers[q.id]?.length > 0 ? (
+                          <ImagePlus className="w-7 h-7 text-text-dim group-hover:text-brand-400 mb-2 transition-colors" />
+                        ) : (
+                          <UploadCloud className="w-7 h-7 text-text-dim group-hover:text-brand-400 mb-2 transition-colors" />
+                        )}
+                        <p className="mb-1 text-[13.5px] text-text-secondary">
+                          <span className="font-bold text-white">
+                            {answers[q.id]?.length > 0 ? "Add another page" : "Click to upload"}
+                          </span> or drag image here
+                        </p>
+                        <p className="text-[11px] text-text-dim mt-1 font-display uppercase tracking-widest">
+                          {answers[q.id]?.length || 0}/5 Images uploaded (Max 5MB)
                         </p>
                       </div>
-                    </div>
-                    <button onClick={() => removeFile(q.id)} className="p-2 text-text-dim hover:text-danger-600 transition-colors rounded-[6px]">
-                      <X className="w-5 h-5" />
-                    </button>
-                  </div>
-                ) : (
-                  <label className="flex flex-col items-center justify-center w-full h-36 border-2 border-dashed border-border-strong rounded-[8px] hover:border-brand-400 hover:bg-brand-900/10 cursor-pointer transition-all group">
-                    <div className="flex flex-col items-center justify-center pt-5 pb-6">
-                      <UploadCloud className="w-8 h-8 text-text-dim group-hover:text-brand-400 mb-3 transition-colors" />
-                      <p className="mb-1 text-[14px] text-text-secondary"><span className="font-medium text-text-primary">Upload solution</span> or drag image here</p>
-                    </div>
-                    <input 
-                      type="file" className="hidden" accept=".pdf,image/*"
-                      onChange={(e) => { if (e.target.files?.[0]) handleFileSelect(q.id, e.target.files[0]); }}
-                    />
-                  </label>
-                )}
-              </div>
-            )}
-          </div>
-        ))}
+                      <input 
+                        type="file" className="hidden" accept="image/*" multiple
+                        onChange={(e) => { if (e.target.files) handleMultipleFilesSelect(q.id, e.target.files); }}
+                      />
+                    </label>
+                  )}
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
       </main>
 
-      {/* Floating Action Footer */}
-      <div className="fixed bottom-0 left-0 w-full bg-bg-primary border-t border-border-subtle p-4 shadow-[0_-8px_30px_rgba(0,0,0,0.3)] z-30">
+      {/* ── Floating Action Footer ── */}
+      <div className="fixed bottom-0 left-0 w-full bg-bg-primary/95 backdrop-blur-md border-t border-border-strong p-4 shadow-[0_-10px_40px_rgba(0,0,0,0.4)] z-30">
         <div className="max-w-4xl mx-auto flex items-center justify-between">
-          <div className="text-[14px] text-text-secondary hidden sm:block">
-            Progress: <span className="text-text-primary font-medium">{Object.keys(answers).length}</span> / {assignment.questions.length} Answered
+          <div className="text-[12px] font-bold text-text-dim uppercase tracking-widest font-display hidden sm:block">
+            Progress: <span className="text-white text-[14px] ml-1">{Object.keys(answers).length}</span> / {assignment.questions.length} Answered
           </div>
           
           <div className="w-full sm:w-auto flex items-center gap-4">
-            {isSubmitting && <span className="text-[13px] text-text-secondary animate-pulse">{uploadProgress}</span>}
+            {isSubmitting && <span className="text-[12px] font-bold text-brand-400 font-display uppercase tracking-widest animate-pulse">{uploadProgress}</span>}
             <button
               onClick={handleSubmit}
               disabled={isSubmitting}
-              className="w-full sm:w-auto flex items-center justify-center gap-2 px-8 py-3 bg-brand-400 hover:bg-brand-600 text-white font-medium text-[14px] rounded-[8px] transition-colors disabled:opacity-50"
+              className="w-full sm:w-auto flex items-center justify-center gap-2 px-8 py-3.5 bg-brand-400 hover:bg-brand-600 text-white font-bold text-[14px] font-display rounded-lg transition-all shadow-brand hover:shadow-brand-hover hover:-translate-y-[1px] disabled:opacity-50 disabled:hover:translate-y-0 disabled:cursor-not-allowed"
             >
               {isSubmitting ? <Loader2 className="w-5 h-5 animate-spin" /> : <Send className="w-5 h-5" />}
-              {isSubmitting ? 'Processing...' : 'Submit Test'}
+              {isSubmitting ? 'Processing...' : 'Submit Evaluation'}
             </button>
           </div>
         </div>
