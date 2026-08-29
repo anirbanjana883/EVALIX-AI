@@ -1,8 +1,4 @@
 # EVALIX AI
-<p align="center">
-  <img src="./frontend/src/assets/logo.jpeg" alt="Evaluator.ai Logo" width="200"/>
-</p>
-
 
 > Enterprise-Grade AI Exam Evaluation Platform
 
@@ -365,5 +361,3 @@ git push origin feature/your-feature-name
 ```
 
 ---
-
-Made with 💡 and ☕ by the EVALIX AI Team
